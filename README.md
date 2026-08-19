@@ -87,6 +87,8 @@ FastAPI backend. The current implementation includes:
 - The FastAPI backend is deployed on Amazon ECS Express Mode.
 - The React frontend is deployed to S3 and served through the enabled
   CloudFront distribution.
+- ECS runtime access is configured through `ecsTaskExecutionRole` for S3,
+  Bedrock, OpenSearch Serverless and DynamoDB.
 - The public frontend URL is `https://d38nzp4j8k9sdf.cloudfront.net`.
 - The public backend URL is
   `https://ai-5428103d948647f2ac9aa11b2ba6f07a.ecs.eu-west-1.on.aws`.
@@ -127,7 +129,7 @@ FastAPI backend. The current implementation includes:
 ### Deployment
 
 - Add staging and production CD environments.
-- Complete and validate the first GitHub Actions CD run using the OIDC role,
+- Validate the first GitHub Actions CD run end to end using the OIDC role,
   repository secret and CloudFront distribution variable.
 - Define infrastructure as code.
 - Add backups, retention policies and disaster-recovery procedures.
@@ -297,8 +299,9 @@ docker push \
 ```
 
 The API image is deployed through Amazon ECS Express Mode. The service uses
-the `ecsTaskExecutionRole`, an ECS Express infrastructure role, and a task
-role with access to the AWS resources used by the application.
+the `ecsTaskExecutionRole` and an ECS Express infrastructure role. The runtime
+role has access to the S3 document bucket, Bedrock model invocation, the
+OpenSearch Serverless collection and both DynamoDB tables.
 
 The image has been built and published successfully. The Lambda function,
 SQS trigger, S3 notification and DynamoDB document persistence are now
@@ -364,8 +367,8 @@ https://d38nzp4j8k9sdf.cloudfront.net
 ```
 
 The S3 document bucket must also allow this CloudFront origin for browser
-uploads using presigned URLs. Its CORS configuration must include `PUT`,
-`GET`, `HEAD` and `OPTIONS`.
+uploads using presigned URLs. S3 accepts `PUT`, `GET` and `HEAD` in
+`AllowedMethods`; `OPTIONS` must not be added to the S3 CORS method list.
 
 For the current local-to-remote API test, use this value in `.env` before the
 build:
@@ -398,14 +401,20 @@ https://ai-5428103d948647f2ac9aa11b2ba6f07a.ecs.eu-west-1.on.aws/health
 Use the public frontend URL for the end-to-end test:
 
 1. Open `https://d38nzp4j8k9sdf.cloudfront.net`.
-2. Upload a real PDF.
-3. Process the document.
-4. Search for text contained in the PDF.
-5. Send a chat message and verify the response and sources.
+2. Upload a real PDF and verify that it appears in S3 under `incoming/`.
+3. Process the document and verify the JSON appears under `processed/`.
+4. Search for text contained in the PDF and verify the OpenSearch results.
+5. Send a chat message and verify the Bedrock response and sources.
 
 The upload uses a presigned S3 URL. If the browser reports a CORS error,
-verify that the documents bucket allows the CloudFront origin and the
-`OPTIONS` method.
+verify that the documents bucket allows the exact CloudFront origin and the
+`PUT`, `GET` and `HEAD` methods. If the API returns `500` or `502`, inspect
+the ECS logs first; the browser may display the backend error as a CORS
+failure when an unhandled error response lacks CORS headers.
+
+The end-to-end development validation has been completed from CloudFront:
+frontend upload, document listing, PDF processing, semantic search and chat
+with Bedrock.
 
 There is no custom public domain yet. The ECR URI below identifies the stored
 image, not the application URL:
