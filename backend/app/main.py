@@ -14,7 +14,7 @@ from app.embeddings import SimulatedEmbeddingProvider
 from app.ingestion import extract_chunks
 from app.orchestrator import Orchestrator
 from app.prompt_builder import PromptBuilder
-from app.providers import ProviderManager, SimulatedChatProvider
+from app.providers import BedrockChatProvider, ProviderManager, SimulatedChatProvider
 from app.rag_service import RAGService
 from app.settings import settings
 from app.vector_index import LocalVectorIndex
@@ -92,7 +92,15 @@ app = FastAPI(
 chat_provider = SimulatedChatProvider()
 embedding_provider = SimulatedEmbeddingProvider(settings.embedding_dimensions)
 vector_index = LocalVectorIndex(settings.local_index_path, settings.embedding_dimensions)
-provider_manager = ProviderManager({"simulated": chat_provider})
+providers = {"simulated": chat_provider}
+if settings.bedrock_model_id:
+    providers["bedrock"] = BedrockChatProvider(
+        region=settings.aws_region,
+        model_id=settings.bedrock_model_id,
+        max_tokens=settings.bedrock_max_tokens,
+        temperature=settings.bedrock_temperature,
+    )
+provider_manager = ProviderManager(providers, default_provider=settings.ai_provider)
 rag_service = RAGService(embedding_provider, vector_index)
 prompt_builder = PromptBuilder()
 orchestrator = Orchestrator(

@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:5173"
     s3_bucket_name: str = ""
     aws_region: str = "eu-west-1"
+    ai_provider: str = "simulated"
+    bedrock_model_id: str = ""
+    bedrock_max_tokens: int = 512
+    bedrock_temperature: float = 0.2
     embedding_dimensions: int = 64
     local_index_path: Path = ROOT_DIR / "backend" / "data" / "vector_index.json"
 
