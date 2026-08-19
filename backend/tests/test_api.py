@@ -59,8 +59,8 @@ def test_orchestrator_routes_to_general_without_relevant_sources(monkeypatch) ->
     client = TestClient(app)
 
     monkeypatch.setattr(
-        "app.main.orchestrator.vector_store.search",
-        lambda vector, limit=3: [],
+        "app.main.orchestrator.rag_service.retrieve",
+        lambda query, limit=3: [],
     )
 
     response = client.post(

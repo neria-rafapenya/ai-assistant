@@ -13,7 +13,9 @@ from pydantic import BaseModel, Field
 from app.embeddings import SimulatedEmbeddingProvider
 from app.ingestion import extract_chunks
 from app.orchestrator import Orchestrator
-from app.providers import SimulatedChatProvider
+from app.prompt_builder import PromptBuilder
+from app.providers import ProviderManager, SimulatedChatProvider
+from app.rag_service import RAGService
 from app.settings import settings
 from app.vector_index import LocalVectorIndex
 
@@ -90,10 +92,13 @@ app = FastAPI(
 chat_provider = SimulatedChatProvider()
 embedding_provider = SimulatedEmbeddingProvider(settings.embedding_dimensions)
 vector_index = LocalVectorIndex(settings.local_index_path, settings.embedding_dimensions)
+provider_manager = ProviderManager({"simulated": chat_provider})
+rag_service = RAGService(embedding_provider, vector_index)
+prompt_builder = PromptBuilder()
 orchestrator = Orchestrator(
-    chat_provider=chat_provider,
-    embedding_provider=embedding_provider,
-    vector_store=vector_index,
+    provider_manager=provider_manager,
+    rag_service=rag_service,
+    prompt_builder=prompt_builder,
 )
 
 s3_client = boto3.client(
