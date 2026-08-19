@@ -78,8 +78,9 @@ FastAPI backend. The current implementation includes:
 - The simulated embedding provider remains available as a local fallback.
 - Automatic S3-to-SQS-to-Lambda PDF processing is working in the development
   account.
-- The backend and frontend are still running locally during development.
-- No public application domain has been configured yet.
+- The FastAPI backend is deployed on Amazon ECS Express Mode.
+- The React frontend is still running locally during development.
+- A custom domain has not been configured yet.
 
 ## TODO
 
@@ -115,7 +116,7 @@ FastAPI backend. The current implementation includes:
 
 ### Deployment
 
-- Containerize the frontend and publish the backend API image.
+- Publish the frontend and configure its public CORS origin.
 - Define infrastructure as code.
 - Deploy the API, frontend and asynchronous processing workflow.
 - Add CD deployment, staging and production environments.
@@ -285,10 +286,9 @@ docker push \
   ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com/ai-assistant-api:latest
 ```
 
-The API image is prepared, but the public FastAPI service has not yet been
-deployed. The next step is to create the AWS service that runs this image
-(for example App Runner) and configure its environment variables and IAM
-access.
+The API image is deployed through Amazon ECS Express Mode. The service uses
+the `ecsTaskExecutionRole`, an ECS Express infrastructure role, and a task
+role with access to the AWS resources used by the application.
 
 The image has been built and published successfully. The Lambda function,
 SQS trigger, S3 notification and DynamoDB document persistence are now
@@ -302,11 +302,23 @@ deploying the public API and frontend.
 
 The application currently runs locally:
 
-- Backend API: `http://localhost:8000`
+- Local backend API: `http://localhost:8000`
 - Frontend: `http://localhost:5173`
 
-There is no public domain yet. The ECR URI below identifies the stored image,
-not the application URL:
+The deployed backend API is available at:
+
+```text
+https://ai-5428103d948647f2ac9aa11b2ba6f07a.ecs.eu-west-1.on.aws
+```
+
+Health check:
+
+```text
+https://ai-5428103d948647f2ac9aa11b2ba6f07a.ecs.eu-west-1.on.aws/health
+```
+
+There is no custom public domain yet. The ECR URI below identifies the stored
+image, not the application URL:
 
 ```text
 740862652747.dkr.ecr.eu-west-1.amazonaws.com/ai-assistant-document-processor:latest
