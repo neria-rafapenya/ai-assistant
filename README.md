@@ -41,8 +41,13 @@ FastAPI backend. The current implementation includes:
   dependencies.
 - Created the ECR repository `ai-assistant-document-processor` in
   `eu-west-1`.
-- Built, tagged and published the Lambda container image to ECR with digest
-  `sha256:1fc03d8eb9253c28eeab2c70f553fb2d786b869b0ce7736888f8fc2506bddd8f`.
+- Built, tagged and published the Lambda container image to ECR. The image
+  was rebuilt for the Lambda-compatible `linux/amd64` platform.
+- Created the Lambda function `ai-assistant-document-processor` from the ECR
+  image and configured its execution role.
+- Added the S3 `ObjectCreated` trigger for PDFs under `incoming/`.
+- Validated the automatic flow: uploading a PDF to S3 creates the processed
+  JSON under `processed/` through Lambda.
 - Implemented an Orchestrator that selects the general or RAG route,
   identifies sources and delegates generation to the configured provider.
 - Added a simulated provider for safe local development.
@@ -59,6 +64,7 @@ FastAPI backend. The current implementation includes:
 - OpenSearch RAG indexing is working.
 - Bedrock embeddings with Titan V2 are working in the development index.
 - The simulated embedding provider remains available as a local fallback.
+- Automatic S3-to-Lambda PDF processing is working in the development account.
 - The backend and frontend are still running locally during development.
 - No public application domain has been configured yet.
 
@@ -66,8 +72,6 @@ FastAPI backend. The current implementation includes:
 
 ### Ingestion and document lifecycle
 
-- Create the Lambda function from the image already published in Amazon ECR.
-- Deploy the Lambda and configure the S3 event notification.
 - Add SQS buffering and a dead-letter queue between S3 and Lambda.
 - Migrate document and conversation persistence from SQLite to DynamoDB or
   another managed production database.
@@ -185,11 +189,11 @@ docker push \
   ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com/ai-assistant-document-processor:latest
 ```
 
-The image has been built and published successfully. The ECR image is only a
-container artifact; it is not yet a running application or a public domain.
-The next deployment steps are creating the Lambda function, configuring its
-IAM execution role, adding the Lambda role to the OpenSearch data-access
-policy, and connecting the S3 event notification.
+The image has been built and published successfully. The Lambda function and
+S3 PDF trigger are now working in the development account. The ECR image is
+the deployment artifact; it is not a public application domain.
+The next deployment steps are adding SQS buffering and a dead-letter queue,
+migrating persistence to DynamoDB, and deploying the public API and frontend.
 
 ## Current URLs and public domain
 
