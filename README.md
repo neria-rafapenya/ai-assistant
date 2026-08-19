@@ -121,7 +121,41 @@ FastAPI backend. The current implementation includes:
 - Add CD deployment, staging and production environments.
 - Add backups, retention policies and disaster-recovery procedures.
 
-## Lambda container deployment to ECR
+## Deployment commands
+
+The commands below assume that Docker Desktop is running, the AWS CLI is
+configured with the `ai-assistant-dev` SSO profile, and AWS resources are in
+`eu-west-1`.
+
+### Common deployment setup
+
+```bash
+cd /Users/rafa_penya/Documents/GitHub/ai-assistant
+source .venv/bin/activate
+export AWS_PROFILE=ai-assistant-dev
+export AWS_REGION=eu-west-1
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
+  --profile ai-assistant-dev \
+  --query Account \
+  --output text)
+
+aws sso login --profile ai-assistant-dev
+aws sts get-caller-identity --profile ai-assistant-dev
+```
+
+Authenticate Docker against ECR:
+
+```bash
+aws ecr get-login-password \
+  --region eu-west-1 \
+  --profile ai-assistant-dev \
+  | docker login \
+  --username AWS \
+  --password-stdin \
+  ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com
+```
+
+### Lambda document processor
 
 The document processor is prepared as a Lambda container image using
 `backend/Dockerfile.lambda`. The following procedure builds the image and
@@ -149,9 +183,6 @@ open -a Docker
 
 ```bash
 cd /Users/rafa_penya/Documents/GitHub/ai-assistant/backend
-source ../.venv/bin/activate
-export AWS_PROFILE=ai-assistant-dev
-export AWS_REGION=eu-west-1
 ```
 
 Create the ECR repository once:
@@ -167,27 +198,14 @@ aws ecr create-repository \
 Build the Lambda image:
 
 ```bash
-docker build \
+docker buildx build \
+  --platform linux/amd64 \
+  --provenance=false \
+  --sbom=false \
+  --load \
   -f Dockerfile.lambda \
   -t ai-assistant-document-processor:latest \
   .
-```
-
-Get the AWS account ID and authenticate Docker with ECR:
-
-```bash
-export AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
-  --profile ai-assistant-dev \
-  --query Account \
-  --output text)
-
-aws ecr get-login-password \
-  --region eu-west-1 \
-  --profile ai-assistant-dev \
-  | docker login \
-  --username AWS \
-  --password-stdin \
-  ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com
 ```
 
 Tag and publish the image:
@@ -200,6 +218,77 @@ docker tag \
 docker push \
   ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com/ai-assistant-document-processor:latest
 ```
+
+Update the existing Lambda function to the newly published image:
+
+```bash
+aws lambda update-function-code \
+  --function-name ai-assistant-document-processor \
+  --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com/ai-assistant-document-processor:latest \
+  --region eu-west-1 \
+  --profile ai-assistant-dev
+```
+
+Verify the asynchronous pipeline after uploading a PDF:
+
+```bash
+aws s3 cp /ruta/al/documento.pdf \
+  s3://ai-assistant-documents-dev-740862652747/incoming/deploy-test.pdf \
+  --profile ai-assistant-dev \
+  --region eu-west-1
+
+aws logs tail /aws/lambda/ai-assistant-document-processor \
+  --since 15m \
+  --profile ai-assistant-dev \
+  --region eu-west-1
+
+aws s3 ls s3://ai-assistant-documents-dev-740862652747/processed/ \
+  --profile ai-assistant-dev \
+  --region eu-west-1
+```
+
+The Lambda function, S3 notification, SQS trigger and execution role were
+created/configured in the AWS Console. The commands above publish and update
+the deployable image and verify the resulting flow.
+
+### FastAPI backend image
+
+The HTTP API uses `backend/Dockerfile.backend`, separate from the Lambda
+processor image. Create its ECR repository once:
+
+```bash
+cd /Users/rafa_penya/Documents/GitHub/ai-assistant/backend
+
+aws ecr create-repository \
+  --repository-name ai-assistant-api \
+  --image-scanning-configuration scanOnPush \
+  --region eu-west-1 \
+  --profile ai-assistant-dev
+```
+
+Build and publish the API image:
+
+```bash
+docker buildx build \
+  --platform linux/amd64 \
+  --provenance=false \
+  --sbom=false \
+  --load \
+  -f Dockerfile.backend \
+  -t ai-assistant-api:latest \
+  .
+
+docker tag ai-assistant-api:latest \
+  ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com/ai-assistant-api:latest
+
+docker push \
+  ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com/ai-assistant-api:latest
+```
+
+The API image is prepared, but the public FastAPI service has not yet been
+deployed. The next step is to create the AWS service that runs this image
+(for example App Runner) and configure its environment variables and IAM
+access.
 
 The image has been built and published successfully. The Lambda function,
 SQS trigger, S3 notification and DynamoDB document persistence are now
