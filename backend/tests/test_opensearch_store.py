@@ -69,6 +69,6 @@ def test_opensearch_store_creates_mapping_and_searches() -> None:
     embedding_mapping = client.indices.created["body"]["mappings"]["properties"]["embedding"]
     assert embedding_mapping["dimension"] == 4
     assert "engine" not in embedding_mapping
-    assert client.bulk_call["refresh"] == "wait_for"
+    assert "refresh" not in client.bulk_call
     assert client.search_call["body"]["size"] == 3
     assert results[0]["source_key"] == "incoming/doc.pdf"

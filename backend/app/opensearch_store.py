@@ -71,7 +71,7 @@ class OpenSearchVectorStore:
                 ]
             )
 
-        response = self.client.bulk(body=operations, refresh="wait_for")
+        response = self.client.bulk(body=operations)
         if response.get("errors"):
             errors = []
             for item in response.get("items", []):
