@@ -295,8 +295,48 @@ SQS trigger, S3 notification and DynamoDB document persistence are now
 working in the development account. Chat persistence has also been validated
 against DynamoDB from the FastAPI backend.
 The ECR image is the deployment artifact; it is not a public application
-domain. The next deployment steps are migrating persistence to DynamoDB and
-deploying the public API and frontend.
+domain.
+
+## Frontend deployment to S3
+
+The React frontend is deployed separately from the Docker-based backend. Each
+frontend release is built locally and synchronized to the private S3 bucket
+`ai-assistant-frontend-dev-740862652747`. CloudFront will be added later as
+the public distribution layer.
+
+### Build and upload a frontend release
+
+Run from `frontend/`:
+
+```bash
+cd /Users/rafa_penya/Documents/GitHub/ai-assistant/frontend
+
+# Vite reads VITE_API_BASE_URL from the root .env file.
+npm run build
+
+aws s3 sync dist/ \
+  s3://ai-assistant-frontend-dev-740862652747/ \
+  --profile ai-assistant-dev \
+  --region eu-west-1
+```
+
+The upload is repeatable: run the same commands after each frontend change.
+The current bucket is private, so it is not yet a public website URL. After
+CloudFront is configured, invalidate its cache after a release when needed:
+
+```bash
+aws cloudfront create-invalidation \
+  --distribution-id DISTRIBUTION_ID \
+  --paths "/*" \
+  --profile ai-assistant-dev
+```
+
+For the current local-to-remote API test, use this value in `.env` before the
+build:
+
+```env
+VITE_API_BASE_URL=https://ai-5428103d948647f2ac9aa11b2ba6f07a.ecs.eu-west-1.on.aws
+```
 
 ## Current URLs and public domain
 
