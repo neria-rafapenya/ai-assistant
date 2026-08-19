@@ -55,6 +55,7 @@ function App() {
   const [provider, setProvider] = useState("");
   const [chatRoute, setChatRoute] = useState<"general" | "rag" | "">("");
   const [chatSources, setChatSources] = useState<string[]>([]);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
   const [health, setHealth] = useState("sin comprobar");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isSending, setIsSending] = useState(false);
@@ -143,7 +144,7 @@ function App() {
         },
         body: JSON.stringify({
           message: trimmed,
-          session_id: null,
+          session_id: chatSessionId,
         }),
       });
 
@@ -152,6 +153,7 @@ function App() {
       }
 
       const data: ChatResponse = await response.json();
+      setChatSessionId(data.session_id);
       setReply(data.reply);
       setProvider(data.provider);
       setChatRoute(data.route);

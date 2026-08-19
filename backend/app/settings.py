@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     opensearch_index: str = "ai-assistant-documents"
     embedding_dimensions: int = 64
     local_index_path: Path = ROOT_DIR / "backend" / "data" / "vector_index.json"
+    chat_database_path: Path = ROOT_DIR / "backend" / "data" / "chat.db"
 
     model_config = SettingsConfigDict(
         env_file=ROOT_DIR / ".env",

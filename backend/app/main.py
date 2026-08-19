@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app.embeddings import SimulatedEmbeddingProvider
+from app.chat_repository import SQLiteChatRepository
 from app.ingestion import extract_chunks
 from app.orchestrator import Orchestrator
 from app.prompt_builder import PromptBuilder
@@ -36,6 +37,22 @@ class ChatResponse(BaseModel):
     provider: str
     route: str = "general"
     sources: list[str] = Field(default_factory=list)
+
+
+class ChatMessageResponse(BaseModel):
+    id: int
+    session_id: str
+    role: str
+    content: str
+    provider: str | None = None
+    route: str | None = None
+    sources: list[str] = Field(default_factory=list)
+    created_at: datetime
+
+
+class ChatHistoryResponse(BaseModel):
+    session_id: str
+    messages: list[ChatMessageResponse]
 
 
 class DocumentItem(BaseModel):
@@ -112,6 +129,7 @@ orchestrator = Orchestrator(
     rag_service=rag_service,
     prompt_builder=prompt_builder,
 )
+chat_repository = SQLiteChatRepository(settings.chat_database_path)
 
 s3_client = boto3.client(
     "s3",
@@ -161,6 +179,7 @@ def health() -> HealthResponse:
     tags=["Chat"],
 )
 def chat(payload: ChatRequest) -> ChatResponse:
+    session_id = payload.session_id or str(uuid4())
     try:
         result = orchestrator.handle(payload.message)
     except Exception as exc:
@@ -169,13 +188,42 @@ def chat(payload: ChatRequest) -> ChatResponse:
             detail="Provider error",
         ) from exc
 
-    return ChatResponse(
-        reply=result.reply,
-        session_id=payload.session_id,
+    chat_repository.save_message(
+        session_id=session_id,
+        role="user",
+        content=payload.message,
+    )
+    chat_repository.save_message(
+        session_id=session_id,
+        role="assistant",
+        content=result.reply,
         provider=result.provider,
         route=result.route,
         sources=result.sources,
     )
+
+    return ChatResponse(
+        reply=result.reply,
+        session_id=session_id,
+        provider=result.provider,
+        route=result.route,
+        sources=result.sources,
+    )
+
+
+@app.get(
+    "/api/v1/chat/{session_id}/messages",
+    response_model=ChatHistoryResponse,
+    summary="Recuperar el historial de una sesión",
+    description=(
+        "Devuelve los mensajes persistidos de una sesión de chat en orden "
+        "cronológico."
+    ),
+    tags=["Chat"],
+)
+def get_chat_history(session_id: str) -> ChatHistoryResponse:
+    messages = chat_repository.list_messages(session_id)
+    return ChatHistoryResponse(session_id=session_id, messages=messages)
 
 
 @app.get(

@@ -81,13 +81,12 @@ def test_chat_delegates_to_orchestrator(monkeypatch) -> None:
     )
 
     assert response.status_code == 200
-    assert response.json() == {
-        "reply": "respuesta del orchestrator",
-        "session_id": None,
-        "provider": "simulated",
-        "route": "rag",
-        "sources": ["incoming/documento.pdf"],
-    }
+    payload = response.json()
+    assert payload["reply"] == "respuesta del orchestrator"
+    assert payload["session_id"]
+    assert payload["provider"] == "simulated"
+    assert payload["route"] == "rag"
+    assert payload["sources"] == ["incoming/documento.pdf"]
 
 
 def test_orchestrator_routes_to_general_without_relevant_sources(monkeypatch) -> None:
