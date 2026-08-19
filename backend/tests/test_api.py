@@ -12,8 +12,13 @@ def test_health_check() -> None:
     assert response.json() == {"status": "ok", "aws_region": "eu-west-1"}
 
 
-def test_chat_ok() -> None:
+def test_chat_ok(monkeypatch) -> None:
     client = TestClient(app)
+
+    monkeypatch.setattr(
+        "app.main.orchestrator.rag_service.retrieve",
+        lambda query, limit=3: [],
+    )
 
     response = client.post(
         "/api/v1/chat",
