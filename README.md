@@ -22,6 +22,8 @@ FastAPI backend. The current implementation includes:
 - Created the DynamoDB development tables for documents and conversations.
 - Added DynamoDB repository implementations with SQLite retained as the local
   fallback, selected through `PERSISTENCE_BACKEND`.
+- Validated document processing state persistence in DynamoDB from Lambda.
+- Validated chat message persistence in DynamoDB with the FastAPI backend.
 - Added a vector-store abstraction with local and OpenSearch Serverless
   implementations.
 - Created the OpenSearch Serverless vector collection and configured its
@@ -79,8 +81,8 @@ FastAPI backend. The current implementation includes:
 
 ### Ingestion and document lifecycle
 
-- Configure Lambda to use the DynamoDB repositories and validate production
-  persistence end to end.
+- Add backups, retention and production data-management policies for the
+  DynamoDB tables.
 - Add explicit retry/backoff observability and operational alerts for
   processing jobs.
 - Add document deletion and re-indexing controls.
@@ -196,7 +198,9 @@ docker push \
 ```
 
 The image has been built and published successfully. The Lambda function,
-SQS trigger and S3 notification are now working in the development account.
+SQS trigger, S3 notification and DynamoDB document persistence are now
+working in the development account. Chat persistence has also been validated
+against DynamoDB from the FastAPI backend.
 The ECR image is the deployment artifact; it is not a public application
 domain. The next deployment steps are migrating persistence to DynamoDB and
 deploying the public API and frontend.
