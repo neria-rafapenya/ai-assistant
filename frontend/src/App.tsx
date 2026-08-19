@@ -75,7 +75,8 @@ function App() {
     [],
   );
 
-  const formatSize = (size: number) => `${new Intl.NumberFormat("es-ES").format(size)} bytes`;
+  const formatSize = (size: number) =>
+    `${new Intl.NumberFormat("es-ES").format(size)} bytes`;
 
   const formatDate = (value: string) =>
     new Intl.DateTimeFormat("es-ES", {
@@ -182,19 +183,24 @@ function App() {
     setUploadError("");
 
     try {
-      const urlResponse = await fetch(`${apiBaseUrl}/api/v1/documents/upload-url`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
+      const urlResponse = await fetch(
+        `${apiBaseUrl}/api/v1/documents/upload-url`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            filename: selectedFile.name,
+            content_type: selectedFile.type,
+          }),
         },
-        body: JSON.stringify({
-          filename: selectedFile.name,
-          content_type: selectedFile.type,
-        }),
-      });
+      );
 
       if (!urlResponse.ok) {
-        throw new Error(`No se pudo crear la URL de subida (${urlResponse.status})`);
+        throw new Error(
+          `No se pudo crear la URL de subida (${urlResponse.status})`,
+        );
       }
 
       const uploadData: UploadUrlResponse = await urlResponse.json();
@@ -236,7 +242,9 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error(`No se pudo procesar el documento (${response.status})`);
+        throw new Error(
+          `No se pudo procesar el documento (${response.status})`,
+        );
       }
 
       const data: ProcessDocumentResponse = await response.json();
@@ -343,7 +351,8 @@ function App() {
                   <strong>Tamano:</strong> {formatSize(document.size)}
                 </p>
                 <p>
-                  <strong>Ultima modificacion:</strong> {formatDate(document.last_modified)}
+                  <strong>Ultima modificacion:</strong>{" "}
+                  {formatDate(document.last_modified)}
                 </p>
                 <button
                   type="button"
@@ -351,7 +360,9 @@ function App() {
                   onClick={() => processDocument(document.key)}
                   disabled={processingKey === document.key}
                 >
-                  {processingKey === document.key ? "Procesando..." : "Procesar PDF"}
+                  {processingKey === document.key
+                    ? "Procesando..."
+                    : "Procesar PDF"}
                 </button>
               </li>
             ))}
@@ -361,7 +372,9 @@ function App() {
         )}
 
         {documentsError ? <p className="error">{documentsError}</p> : null}
-        {processingMessage ? <p className="success">{processingMessage}</p> : null}
+        {processingMessage ? (
+          <p className="success">{processingMessage}</p>
+        ) : null}
         {processingError ? <p className="error">{processingError}</p> : null}
 
         <div className="rag-search">
@@ -383,7 +396,8 @@ function App() {
               {searchResults.map((result) => (
                 <li key={result.id} className="search-result">
                   <p>
-                    <strong>{result.source_key}</strong> · página {result.page} · score {result.score}
+                    <strong>{result.source_key}</strong> · página {result.page}{" "}
+                    · score {result.score}
                   </p>
                   <p>{result.text}</p>
                 </li>

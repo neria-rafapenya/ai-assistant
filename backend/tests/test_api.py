@@ -53,3 +53,21 @@ def test_chat_provider_error(monkeypatch) -> None:
 
     assert response.status_code == 502
     assert response.json() == {"detail": "Provider error"}
+
+
+def test_orchestrator_routes_to_general_without_relevant_sources(monkeypatch) -> None:
+    client = TestClient(app)
+
+    monkeypatch.setattr(
+        "app.main.orchestrator.vector_store.search",
+        lambda vector, limit=3: [],
+    )
+
+    response = client.post(
+        "/api/v1/chat",
+        json={"message": "hola"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["route"] == "general"
+    assert response.json()["sources"] == []

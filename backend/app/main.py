@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from app.embeddings import SimulatedEmbeddingProvider
 from app.ingestion import extract_chunks
+from app.orchestrator import Orchestrator
 from app.providers import SimulatedChatProvider
 from app.settings import settings
 from app.vector_index import LocalVectorIndex
@@ -31,6 +32,8 @@ class ChatResponse(BaseModel):
     reply: str
     session_id: str | None = None
     provider: str
+    route: str = "general"
+    sources: list[str] = Field(default_factory=list)
 
 
 class DocumentItem(BaseModel):
@@ -87,6 +90,11 @@ app = FastAPI(
 chat_provider = SimulatedChatProvider()
 embedding_provider = SimulatedEmbeddingProvider(settings.embedding_dimensions)
 vector_index = LocalVectorIndex(settings.local_index_path, settings.embedding_dimensions)
+orchestrator = Orchestrator(
+    chat_provider=chat_provider,
+    embedding_provider=embedding_provider,
+    vector_store=vector_index,
+)
 
 s3_client = boto3.client(
     "s3",
@@ -118,7 +126,7 @@ def health() -> HealthResponse:
 @app.post("/api/v1/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest) -> ChatResponse:
     try:
-        result = chat_provider.generate_reply(payload.message)
+        result = orchestrator.handle(payload.message)
     except Exception as exc:
         raise HTTPException(
             status_code=502,
@@ -129,6 +137,8 @@ def chat(payload: ChatRequest) -> ChatResponse:
         reply=result.reply,
         session_id=payload.session_id,
         provider=result.provider,
+        route=result.route,
+        sources=result.sources,
     )
 
 
