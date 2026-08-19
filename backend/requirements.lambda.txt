@@ -1,0 +1,5 @@
+fastapi>=0.116.0
+pydantic-settings>=2.10.1
+boto3[crt]>=1.40.0
+opensearch-py>=2.8.0
+pypdf>=5.0.0

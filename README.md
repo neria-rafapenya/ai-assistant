@@ -37,6 +37,8 @@ FastAPI backend. The current implementation includes:
 - Added a maximum retry limit and the document status endpoint.
 - Prepared an S3 `ObjectCreated` Lambda handler that reuses the backend
   document processor; deployment and queue wiring remain pending.
+- Prepared a Lambda container image definition with the backend runtime
+  dependencies.
 - Implemented an Orchestrator that selects the general or RAG route,
   identifies sources and delegates generation to the configured provider.
 - Added a simulated provider for safe local development.
@@ -58,7 +60,9 @@ FastAPI backend. The current implementation includes:
 
 ### Ingestion and document lifecycle
 
-- Deploy the S3 event-driven workflow using Lambda and/or SQS for production.
+- Build and publish the Lambda image to Amazon ECR.
+- Deploy the Lambda and configure the S3 event notification.
+- Add SQS buffering and a dead-letter queue between S3 and Lambda.
 - Migrate document and conversation persistence from SQLite to DynamoDB or
   another managed production database.
 - Add a durable queue, exponential backoff and dead-letter handling for
