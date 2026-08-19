@@ -3,6 +3,10 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
+
+import boto3
+from boto3.dynamodb.conditions import Key
 
 
 class SQLiteChatRepository:
@@ -81,7 +85,7 @@ class SQLiteChatRepository:
 
         return [
             {
-                "id": row["id"],
+                "id": str(row["id"]),
                 "session_id": row["session_id"],
                 "role": row["role"],
                 "content": row["content"],
@@ -91,4 +95,45 @@ class SQLiteChatRepository:
                 "created_at": row["created_at"],
             }
             for row in rows
+        ]
+
+
+class DynamoDBChatRepository:
+    def __init__(self, table_name: str, region: str) -> None:
+        self.table = boto3.resource("dynamodb", region_name=region).Table(table_name)
+
+    def save_message(self, session_id: str, role: str, content: str,
+                     provider: str | None = None, route: str | None = None,
+                     sources: list[str] | None = None) -> None:
+        item: dict[str, Any] = {
+            "session_id": session_id,
+            "message_id": str(uuid4()),
+            "role": role,
+            "content": content,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "sources": sources or [],
+        }
+        if provider is not None:
+            item["provider"] = provider
+        if route is not None:
+            item["route"] = route
+        self.table.put_item(Item=item)
+
+    def list_messages(self, session_id: str) -> list[dict[str, Any]]:
+        response = self.table.query(
+            KeyConditionExpression=Key("session_id").eq(session_id),
+            ScanIndexForward=True,
+        )
+        return [
+            {
+                "id": item["message_id"],
+                "session_id": item["session_id"],
+                "role": item["role"],
+                "content": item["content"],
+                "provider": item.get("provider"),
+                "route": item.get("route"),
+                "sources": item.get("sources", []),
+                "created_at": item["created_at"],
+            }
+            for item in response.get("Items", [])
         ]

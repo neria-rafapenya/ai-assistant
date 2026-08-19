@@ -3,6 +3,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import boto3
+
 
 class SQLiteDocumentRepository:
     def __init__(self, database_path: Path, max_attempts: int = 3) -> None:
@@ -82,3 +84,71 @@ class SQLiteDocumentRepository:
                 "SELECT * FROM documents WHERE source_key = ?", (source_key,)
             ).fetchone()
         return dict(row) if row else None
+
+
+class DynamoDBDocumentRepository:
+    def __init__(self, table_name: str, region: str, max_attempts: int = 3) -> None:
+        self.max_attempts = max_attempts
+        self.table = boto3.resource("dynamodb", region_name=region).Table(table_name)
+
+    def start_processing(self, source_key: str) -> bool:
+        existing = self.get(source_key)
+        if existing and int(existing.get("attempts", 0)) >= self.max_attempts:
+            return False
+        now = datetime.now(timezone.utc).isoformat()
+        if existing:
+            self.table.update_item(
+                Key={"source_key": source_key},
+                UpdateExpression=(
+                    "SET #status = :processing, #attempts = #attempts + :one, "
+                    "#updated_at = :now REMOVE #last_error"
+                ),
+                ExpressionAttributeNames={
+                    "#status": "status", "#attempts": "attempts",
+                    "#updated_at": "updated_at", "#last_error": "last_error",
+                },
+                ExpressionAttributeValues={
+                    ":processing": "processing", ":one": 1, ":now": now,
+                },
+            )
+        else:
+            self.table.put_item(Item={
+                "source_key": source_key, "status": "processing",
+                "attempts": 1, "created_at": now, "updated_at": now,
+            })
+        return True
+
+    def mark_completed(self, source_key: str, processed_key: str, chunks: int) -> None:
+        self.table.update_item(
+            Key={"source_key": source_key},
+            UpdateExpression=(
+                "SET #status = :processed, #processed_key = :processed_key, "
+                "#chunks = :chunks, #updated_at = :now REMOVE #last_error"
+            ),
+            ExpressionAttributeNames={
+                "#status": "status", "#processed_key": "processed_key",
+                "#chunks": "chunks", "#updated_at": "updated_at",
+                "#last_error": "last_error",
+            },
+            ExpressionAttributeValues={
+                ":processed": "processed", ":processed_key": processed_key,
+                ":chunks": chunks, ":now": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+    def mark_failed(self, source_key: str, error: str) -> None:
+        self.table.update_item(
+            Key={"source_key": source_key},
+            UpdateExpression="SET #status = :failed, #last_error = :error, #updated_at = :now",
+            ExpressionAttributeNames={
+                "#status": "status", "#last_error": "last_error", "#updated_at": "updated_at",
+            },
+            ExpressionAttributeValues={
+                ":failed": "failed", ":error": error[:2000],
+                ":now": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+    def get(self, source_key: str) -> dict[str, Any] | None:
+        response = self.table.get_item(Key={"source_key": source_key})
+        return response.get("Item")

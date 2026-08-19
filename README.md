@@ -19,6 +19,9 @@ FastAPI backend. The current implementation includes:
   without exposing AWS credentials.
 - Implemented PDF processing, text extraction and chunk generation.
 - Added local persistence for chat sessions and messages with SQLite.
+- Created the DynamoDB development tables for documents and conversations.
+- Added DynamoDB repository implementations with SQLite retained as the local
+  fallback, selected through `PERSISTENCE_BACKEND`.
 - Added a vector-store abstraction with local and OpenSearch Serverless
   implementations.
 - Created the OpenSearch Serverless vector collection and configured its
@@ -76,8 +79,8 @@ FastAPI backend. The current implementation includes:
 
 ### Ingestion and document lifecycle
 
-- Migrate document and conversation persistence from SQLite to DynamoDB or
-  another managed production database.
+- Configure Lambda to use the DynamoDB repositories and validate production
+  persistence end to end.
 - Add explicit retry/backoff observability and operational alerts for
   processing jobs.
 - Add document deletion and re-indexing controls.

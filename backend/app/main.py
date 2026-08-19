@@ -12,8 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app.embeddings import BedrockEmbeddingProvider, SimulatedEmbeddingProvider
-from app.chat_repository import SQLiteChatRepository
-from app.document_repository import SQLiteDocumentRepository
+from app.chat_repository import DynamoDBChatRepository, SQLiteChatRepository
+from app.document_repository import DynamoDBDocumentRepository, SQLiteDocumentRepository
 from app.ingestion import extract_chunks
 from app.orchestrator import Orchestrator
 from app.prompt_builder import PromptBuilder
@@ -163,8 +163,20 @@ orchestrator = Orchestrator(
     rag_service=rag_service,
     prompt_builder=prompt_builder,
 )
-chat_repository = SQLiteChatRepository(settings.chat_database_path)
-document_repository = SQLiteDocumentRepository(settings.chat_database_path)
+if settings.persistence_backend == "dynamodb":
+    chat_repository = DynamoDBChatRepository(
+        settings.dynamodb_conversations_table_name,
+        settings.aws_region,
+    )
+    document_repository = DynamoDBDocumentRepository(
+        settings.dynamodb_documents_table_name,
+        settings.aws_region,
+    )
+elif settings.persistence_backend == "sqlite":
+    chat_repository = SQLiteChatRepository(settings.chat_database_path)
+    document_repository = SQLiteDocumentRepository(settings.chat_database_path)
+else:
+    raise ValueError(f"Unknown persistence backend: {settings.persistence_backend}")
 
 s3_client = boto3.client(
     "s3",

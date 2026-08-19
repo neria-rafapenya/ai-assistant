@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     opensearch_index: str = "ai-assistant-documents"
     opensearch_service: str = "aoss"
     embedding_dimensions: int = 64
+    persistence_backend: str = "sqlite"
+    dynamodb_documents_table_name: str = "ai-assistant-documents-dev"
+    dynamodb_conversations_table_name: str = "ai-assistant-conversations-dev"
     local_index_path: Path = ROOT_DIR / "backend" / "data" / "vector_index.json"
     chat_database_path: Path = ROOT_DIR / "backend" / "data" / "chat.db"
 
