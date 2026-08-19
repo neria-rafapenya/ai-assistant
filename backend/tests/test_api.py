@@ -69,6 +69,11 @@ def test_chat_can_select_provider_for_single_request(monkeypatch) -> None:
 def test_chat_provider_error(monkeypatch) -> None:
     client = TestClient(app)
 
+    monkeypatch.setattr(
+        "app.main.orchestrator.rag_service.retrieve",
+        lambda query, limit=3: [],
+    )
+
     def raise_error(_: str):
         raise RuntimeError("boom")
 
@@ -80,7 +85,7 @@ def test_chat_provider_error(monkeypatch) -> None:
     )
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "Provider error"}
+    assert response.json() == {"detail": "Provider error: boom"}
 
 
 def test_chat_delegates_to_orchestrator(monkeypatch) -> None:

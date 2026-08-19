@@ -45,7 +45,7 @@ Example response:
 
 ### Prueba controlada de Bedrock
 
-Configura primero `BEDROCK_MODEL_ID` en `.env` y conserva
+Configura `BEDROCK_MODEL_ID=eu.amazon.nova-lite-v1:0` en `.env` y conserva
 `AI_PROVIDER=simulated`. Después envía:
 
 ```bash

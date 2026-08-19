@@ -198,9 +198,10 @@ def chat(payload: ChatRequest) -> ChatResponse:
     try:
         result = orchestrator.handle(payload.message, provider_name=payload.provider)
     except Exception as exc:
+        logger.exception("Could not generate chat response")
         raise HTTPException(
             status_code=502,
-            detail="Provider error",
+            detail=f"Provider error: {exc}",
         ) from exc
 
     chat_repository.save_message(
