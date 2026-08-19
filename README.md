@@ -23,8 +23,15 @@ FastAPI backend. The current implementation includes:
   implementations.
 - Created the OpenSearch Serverless vector collection and configured its
   data access policy for the IAM Identity Center role.
-- Created the `ai-assistant-documents` index and indexed processed chunks.
+- Created the `ai-assistant-documents` index and the
+  `ai-assistant-documents-bedrock-512` index.
+- Added the Bedrock embedding provider using Titan Text Embeddings V2 with
+  configurable vector dimensions.
+- Reprocessed documents with real 512-dimensional embeddings and validated
+  semantic search in OpenSearch.
 - Implemented RAG search and document-processing endpoints.
+- Automated document processing after a successful frontend upload, while
+  keeping manual reprocessing available for retries.
 - Implemented an Orchestrator that selects the general or RAG route,
   identifies sources and delegates generation to the configured provider.
 - Added a simulated provider for safe local development.
@@ -39,9 +46,49 @@ FastAPI backend. The current implementation includes:
 
 - Real Bedrock text generation is working.
 - OpenSearch RAG indexing is working.
-- Embeddings are still simulated in the current implementation.
-- Bedrock embeddings with Amazon Titan Text Embeddings V2 are the next
-  planned phase.
+- Bedrock embeddings with Titan V2 are working in the development index.
+- The simulated embedding provider remains available as a local fallback.
+
+## TODO
+
+### Ingestion and document lifecycle
+
+- Add document processing status tracking: pending, processing, processed and
+  failed.
+- Add idempotency and a retry strategy for failed processing jobs.
+- Replace the frontend-triggered processing call with an S3 event-driven
+  workflow using Lambda and/or SQS for production.
+- Add document deletion and re-indexing controls.
+
+### RAG and assistant quality
+
+- Improve chunking for semantic sections instead of fixed-size chunks only.
+- Tune multilingual retrieval for Spanish tarot and dream-interpretation
+  content.
+- Add citations and clearer source references to assistant responses.
+- Add evaluation queries and relevance metrics for RAG quality.
+
+### Security and application features
+
+- Add user authentication and authorization to FastAPI and React.
+- Isolate documents, conversations and indexes by user or tenant.
+- Add request validation, rate limiting and production CORS configuration.
+- Implement the tarot-reading and dream-interpretation domain workflows.
+
+### Operations and cost control
+
+- Add structured logging, metrics and error monitoring.
+- Add dashboards for S3, OpenSearch and Bedrock usage.
+- Create cost simulations by volume of documents, chunks and conversations.
+- Review and minimize IAM permissions before production.
+
+### Deployment
+
+- Containerize the backend and frontend.
+- Define infrastructure as code.
+- Deploy the API, frontend and asynchronous processing workflow.
+- Add CI/CD, staging and production environments.
+- Add backups, retention policies and disaster-recovery procedures.
 
 ## Environment variables
 
@@ -59,3 +106,6 @@ Configured in `.env` and documented in `.env.example`:
 - `BEDROCK_MODEL_ID=eu.amazon.nova-lite-v1:0`
 - `BEDROCK_MAX_TOKENS=128`
 - `BEDROCK_TEMPERATURE=0.2`
+- `EMBEDDING_PROVIDER=simulated`
+- `BEDROCK_EMBEDDING_MODEL_ID=amazon.titan-embed-text-v2:0`
+- `EMBEDDING_DIMENSIONS=512`
