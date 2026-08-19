@@ -48,6 +48,9 @@ FastAPI backend. The current implementation includes:
 - Added the S3 `ObjectCreated` trigger for PDFs under `incoming/`.
 - Validated the automatic flow: uploading a PDF to S3 creates the processed
   JSON under `processed/` through Lambda.
+- Added an SQS standard queue and dead-letter queue between S3 and Lambda.
+- Updated the Lambda handler to process SQS-wrapped S3 notifications.
+- Validated the S3 → SQS → Lambda document-processing flow.
 - Implemented an Orchestrator that selects the general or RAG route,
   identifies sources and delegates generation to the configured provider.
 - Added a simulated provider for safe local development.
@@ -72,7 +75,6 @@ FastAPI backend. The current implementation includes:
 
 ### Ingestion and document lifecycle
 
-- Add SQS buffering and a dead-letter queue between S3 and Lambda.
 - Migrate document and conversation persistence from SQLite to DynamoDB or
   another managed production database.
 - Add a durable queue, exponential backoff and dead-letter handling for
