@@ -142,3 +142,6 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 backend/data/vector_index.json
+
+**/__pycache__/
+*.py[cod]
