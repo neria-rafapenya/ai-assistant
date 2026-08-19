@@ -15,7 +15,7 @@ def test_vector_store_factory_uses_local_backend(tmp_path) -> None:
 
 
 def test_vector_store_factory_rejects_unimplemented_opensearch(tmp_path) -> None:
-    with pytest.raises(RuntimeError, match="OpenSearch backend is not implemented"):
+    with pytest.raises(RuntimeError, match="OPENSEARCH_ENDPOINT is required"):
         create_vector_store(
             backend="opensearch",
             local_index_path=tmp_path / "vector_index.json",

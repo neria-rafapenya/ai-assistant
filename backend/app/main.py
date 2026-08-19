@@ -112,6 +112,10 @@ vector_index = create_vector_store(
     backend=settings.vector_store_backend,
     local_index_path=settings.local_index_path,
     dimensions=settings.embedding_dimensions,
+    opensearch_endpoint=settings.opensearch_endpoint,
+    opensearch_index=settings.opensearch_index,
+    aws_region=settings.aws_region,
+    opensearch_service=settings.opensearch_service,
 )
 providers = {"simulated": chat_provider}
 if settings.bedrock_model_id:
