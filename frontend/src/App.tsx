@@ -9,6 +9,8 @@ type ChatResponse = {
   reply: string;
   session_id: string | null;
   provider: string;
+  route: "general" | "rag";
+  sources: string[];
 };
 
 type DocumentItem = {
@@ -51,6 +53,8 @@ function App() {
   const [message, setMessage] = useState("");
   const [reply, setReply] = useState("");
   const [provider, setProvider] = useState("");
+  const [chatRoute, setChatRoute] = useState<"general" | "rag" | "">("");
+  const [chatSources, setChatSources] = useState<string[]>([]);
   const [health, setHealth] = useState("sin comprobar");
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isSending, setIsSending] = useState(false);
@@ -150,6 +154,8 @@ function App() {
       const data: ChatResponse = await response.json();
       setReply(data.reply);
       setProvider(data.provider);
+      setChatRoute(data.route);
+      setChatSources(data.sources);
     } catch (err) {
       const detail = err instanceof Error ? err.message : "Error desconocido";
       setChatError(detail);
@@ -429,8 +435,16 @@ function App() {
             <strong>Proveedor:</strong> {provider || "sin respuesta"}
           </p>
           <p>
+            <strong>Ruta:</strong> {chatRoute || "sin respuesta"}
+          </p>
+          <p>
             <strong>Reply:</strong> {reply || "sin respuesta"}
           </p>
+          {chatSources.length > 0 ? (
+            <p>
+              <strong>Fuentes:</strong> {chatSources.join(", ")}
+            </p>
+          ) : null}
         </div>
 
         {chatError ? <p className="error">{chatError}</p> : null}

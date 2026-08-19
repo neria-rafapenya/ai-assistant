@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from types import SimpleNamespace
 
 from app.main import app
 
@@ -58,6 +59,35 @@ def test_chat_provider_error(monkeypatch) -> None:
 
     assert response.status_code == 502
     assert response.json() == {"detail": "Provider error"}
+
+
+def test_chat_delegates_to_orchestrator(monkeypatch) -> None:
+    client = TestClient(app)
+
+    def fake_handle(message: str):
+        assert message == "consulta sobre documentos"
+        return SimpleNamespace(
+            reply="respuesta del orchestrator",
+            provider="simulated",
+            route="rag",
+            sources=["incoming/documento.pdf"],
+        )
+
+    monkeypatch.setattr("app.main.orchestrator.handle", fake_handle)
+
+    response = client.post(
+        "/api/v1/chat",
+        json={"message": "consulta sobre documentos"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "reply": "respuesta del orchestrator",
+        "session_id": None,
+        "provider": "simulated",
+        "route": "rag",
+        "sources": ["incoming/documento.pdf"],
+    }
 
 
 def test_orchestrator_routes_to_general_without_relevant_sources(monkeypatch) -> None:
