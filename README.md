@@ -29,6 +29,9 @@ FastAPI backend. The current implementation includes:
 - Added a GitHub Actions CD workflow that publishes the API image to ECR,
   forces an ECS deployment, uploads the frontend to S3 and invalidates
   CloudFront.
+- Created the GitHub OIDC identity provider and the dedicated IAM role
+  `github-actions-deploy-role` for deployments from the `main` branch of
+  `neria-rafapenya/ai-assistant`.
 - Added a separate `backend/Dockerfile.backend` for serving the FastAPI API;
   the existing `Dockerfile.lambda` remains dedicated to document jobs.
 - Added a vector-store abstraction with local and OpenSearch Serverless
@@ -82,7 +85,11 @@ FastAPI backend. The current implementation includes:
 - Automatic S3-to-SQS-to-Lambda PDF processing is working in the development
   account.
 - The FastAPI backend is deployed on Amazon ECS Express Mode.
-- The React frontend is still running locally during development.
+- The React frontend is deployed to S3 and served through the enabled
+  CloudFront distribution.
+- The public frontend URL is `https://d38nzp4j8k9sdf.cloudfront.net`.
+- The public backend URL is
+  `https://ai-5428103d948647f2ac9aa11b2ba6f07a.ecs.eu-west-1.on.aws`.
 - A custom domain has not been configured yet.
 
 ## TODO
@@ -120,6 +127,8 @@ FastAPI backend. The current implementation includes:
 ### Deployment
 
 - Add staging and production CD environments.
+- Complete and validate the first GitHub Actions CD run using the OIDC role,
+  repository secret and CloudFront distribution variable.
 - Define infrastructure as code.
 - Add backups, retention policies and disaster-recovery procedures.
 
@@ -301,9 +310,9 @@ domain.
 ## Frontend deployment to S3
 
 The React frontend is deployed separately from the Docker-based backend. Each
-frontend release is built locally and synchronized to the private S3 bucket
-`ai-assistant-frontend-dev-740862652747`. CloudFront will be added later as
-the public distribution layer.
+frontend release is built and synchronized to the private S3 bucket
+`ai-assistant-frontend-dev-740862652747`, then served publicly through
+CloudFront.
 
 ### Build and upload a frontend release
 
@@ -322,8 +331,8 @@ aws s3 sync dist/ \
 ```
 
 The upload is repeatable: run the same commands after each frontend change.
-The current bucket is private, so it is not yet a public website URL. After
-CloudFront is configured, invalidate its cache after a release when needed:
+The bucket is private; CloudFront is the public distribution layer. Invalidate
+its cache after a release when needed:
 
 ```bash
 aws cloudfront create-invalidation \
@@ -343,6 +352,8 @@ using it:
   CloudFront invalidation.
 - Variable `CLOUDFRONT_DISTRIBUTION_ID`: current distribution ID
   `E2B4Q04OL4DTCN`.
+- The secret contains only the ARN of `github-actions-deploy-role`; no AWS
+  access keys are stored in GitHub.
 
 The workflow builds React with the public ECS API URL, publishes the API
 image, forces an ECS deployment, uploads `frontend/dist/` to S3 and invalidates
@@ -351,6 +362,10 @@ CloudFront. The current ECS CORS origin is:
 ```text
 https://d38nzp4j8k9sdf.cloudfront.net
 ```
+
+The S3 document bucket must also allow this CloudFront origin for browser
+uploads using presigned URLs. Its CORS configuration must include `PUT`,
+`GET`, `HEAD` and `OPTIONS`.
 
 For the current local-to-remote API test, use this value in `.env` before the
 build:
@@ -377,6 +392,20 @@ Health check:
 ```text
 https://ai-5428103d948647f2ac9aa11b2ba6f07a.ecs.eu-west-1.on.aws/health
 ```
+
+## Demo validation from CloudFront
+
+Use the public frontend URL for the end-to-end test:
+
+1. Open `https://d38nzp4j8k9sdf.cloudfront.net`.
+2. Upload a real PDF.
+3. Process the document.
+4. Search for text contained in the PDF.
+5. Send a chat message and verify the response and sources.
+
+The upload uses a presigned S3 URL. If the browser reports a CORS error,
+verify that the documents bucket allows the CloudFront origin and the
+`OPTIONS` method.
 
 There is no custom public domain yet. The ECR URI below identifies the stored
 image, not the application URL:
