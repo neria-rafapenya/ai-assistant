@@ -1,82 +1,82 @@
-import { useMemo, useState } from 'react'
-import './App.css'
+import { useMemo, useState } from "react";
+import "./App.css";
 
 type HealthResponse = {
-  status: string
-}
+  status: string;
+};
 
 type ChatResponse = {
-  reply: string
-  session_id: string | null
-  provider: string
-}
+  reply: string;
+  session_id: string | null;
+  provider: string;
+};
 
 function App() {
-  const [message, setMessage] = useState('')
-  const [reply, setReply] = useState('')
-  const [provider, setProvider] = useState('')
-  const [health, setHealth] = useState('sin comprobar')
-  const [isSending, setIsSending] = useState(false)
-  const [error, setError] = useState('')
+  const [message, setMessage] = useState("");
+  const [reply, setReply] = useState("");
+  const [provider, setProvider] = useState("");
+  const [health, setHealth] = useState("sin comprobar");
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState("");
 
   const apiBaseUrl = useMemo(
-    () => import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000',
+    () => import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000",
     [],
-  )
+  );
 
   const checkHealth = async () => {
-    setError('')
+    setError("");
     try {
-      const response = await fetch(`${apiBaseUrl}/health`)
+      const response = await fetch(`${apiBaseUrl}/health`);
       if (!response.ok) {
-        throw new Error(`Health check fallo con status ${response.status}`)
+        throw new Error(`Health check fallo con status ${response.status}`);
       }
-      const data: HealthResponse = await response.json()
-      setHealth(data.status)
+      const data: HealthResponse = await response.json();
+      setHealth(data.status);
     } catch (err) {
-      const detail = err instanceof Error ? err.message : 'Error desconocido'
-      setHealth('error')
-      setError(detail)
+      const detail = err instanceof Error ? err.message : "Error desconocido";
+      setHealth("error");
+      setError(detail);
     }
-  }
+  };
 
   const sendMessage = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    const trimmed = message.trim()
+    event.preventDefault();
+    const trimmed = message.trim();
     if (!trimmed) {
-      setError('Escribe un mensaje antes de enviar.')
-      return
+      setError("Escribe un mensaje antes de enviar.");
+      return;
     }
 
-    setIsSending(true)
-    setError('')
+    setIsSending(true);
+    setError("");
 
     try {
       const response = await fetch(`${apiBaseUrl}/api/v1/chat`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'content-type': 'application/json',
+          "content-type": "application/json",
         },
         body: JSON.stringify({
           message: trimmed,
           session_id: null,
         }),
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`Chat fallo con status ${response.status}`)
+        throw new Error(`Chat fallo con status ${response.status}`);
       }
 
-      const data: ChatResponse = await response.json()
-      setReply(data.reply)
-      setProvider(data.provider)
+      const data: ChatResponse = await response.json();
+      setReply(data.reply);
+      setProvider(data.provider);
     } catch (err) {
-      const detail = err instanceof Error ? err.message : 'Error desconocido'
-      setError(detail)
+      const detail = err instanceof Error ? err.message : "Error desconocido";
+      setError(detail);
     } finally {
-      setIsSending(false)
+      setIsSending(false);
     }
-  }
+  };
 
   return (
     <main className="app-shell">
@@ -105,23 +105,23 @@ function App() {
             rows={4}
           />
           <button type="submit" className="action" disabled={isSending}>
-            {isSending ? 'Enviando...' : 'Enviar a /api/v1/chat'}
+            {isSending ? "Enviando..." : "Enviar a /api/v1/chat"}
           </button>
         </form>
 
         <div className="result">
           <p>
-            <strong>Proveedor:</strong> {provider || 'sin respuesta'}
+            <strong>Proveedor:</strong> {provider || "sin respuesta"}
           </p>
           <p>
-            <strong>Reply:</strong> {reply || 'sin respuesta'}
+            <strong>Reply:</strong> {reply || "sin respuesta"}
           </p>
         </div>
 
         {error ? <p className="error">{error}</p> : null}
       </section>
     </main>
-  )
+  );
 }
 
-export default App
+export default App;
