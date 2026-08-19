@@ -227,6 +227,7 @@ function App() {
       setUploadMessage(`Archivo subido: ${uploadData.key}`);
       setSelectedFile(null);
       await loadDocuments();
+      await processDocument(uploadData.key);
     } catch (err) {
       const detail = err instanceof Error ? err.message : "Error desconocido";
       setUploadError(detail);
@@ -370,7 +371,7 @@ function App() {
                 >
                   {processingKey === document.key
                     ? "Procesando..."
-                    : "Procesar PDF"}
+                    : "Procesar PDF de nuevo"}
                 </button>
               </li>
             ))}
