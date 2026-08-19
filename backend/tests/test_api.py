@@ -44,6 +44,28 @@ def test_chat_invalid_request() -> None:
     assert response.status_code == 422
 
 
+def test_chat_can_select_provider_for_single_request(monkeypatch) -> None:
+    client = TestClient(app)
+
+    monkeypatch.setattr(
+        "app.main.orchestrator.handle",
+        lambda message, provider_name=None: SimpleNamespace(
+            reply=f"respuesta con {provider_name}",
+            provider=provider_name,
+            route="general",
+            sources=[],
+        ),
+    )
+
+    response = client.post(
+        "/api/v1/chat",
+        json={"message": "prueba controlada", "provider": "bedrock"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["provider"] == "bedrock"
+
+
 def test_chat_provider_error(monkeypatch) -> None:
     client = TestClient(app)
 
@@ -64,8 +86,9 @@ def test_chat_provider_error(monkeypatch) -> None:
 def test_chat_delegates_to_orchestrator(monkeypatch) -> None:
     client = TestClient(app)
 
-    def fake_handle(message: str):
+    def fake_handle(message: str, provider_name=None):
         assert message == "consulta sobre documentos"
+        assert provider_name is None
         return SimpleNamespace(
             reply="respuesta del orchestrator",
             provider="simulated",

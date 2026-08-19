@@ -33,6 +33,13 @@ class HealthResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     session_id: str | None = None
+    provider: str | None = Field(
+        default=None,
+        description=(
+            "Proveedor opcional para esta petición. Si se omite, se usa "
+            "AI_PROVIDER. Valores disponibles: simulated o bedrock."
+        ),
+    )
 
 
 class ChatResponse(BaseModel):
@@ -189,7 +196,7 @@ def health() -> HealthResponse:
 def chat(payload: ChatRequest) -> ChatResponse:
     session_id = payload.session_id or str(uuid4())
     try:
-        result = orchestrator.handle(payload.message)
+        result = orchestrator.handle(payload.message, provider_name=payload.provider)
     except Exception as exc:
         raise HTTPException(
             status_code=502,

@@ -23,14 +23,21 @@ class Orchestrator:
         self.rag_service = rag_service
         self.prompt_builder = prompt_builder
 
-    def handle(self, message: str) -> OrchestratorResult:
+    def handle(
+        self,
+        message: str,
+        provider_name: str | None = None,
+    ) -> OrchestratorResult:
         query = message.strip()
         relevant = self.rag_service.retrieve(query, limit=3)
         route = "rag" if relevant else "general"
         sources = list(dict.fromkeys(candidate["source_key"] for candidate in relevant))
 
         prompt = self.prompt_builder.build(query, relevant)
-        provider_result = self.provider_manager.generate_reply(prompt)
+        provider_result = self.provider_manager.generate_reply(
+            prompt,
+            provider_name=provider_name,
+        )
         return OrchestratorResult(
             reply=provider_result.reply,
             provider=provider_result.provider,
