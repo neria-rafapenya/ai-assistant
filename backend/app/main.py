@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.embeddings import BedrockEmbeddingProvider, SimulatedEmbeddingProvider
 from app.chat_repository import SQLiteChatRepository
+from app.document_repository import SQLiteDocumentRepository
 from app.ingestion import extract_chunks
 from app.orchestrator import Orchestrator
 from app.prompt_builder import PromptBuilder
@@ -99,6 +100,15 @@ class ProcessDocumentResponse(BaseModel):
     indexed_chunks: int
 
 
+class DocumentStatusResponse(BaseModel):
+    source_key: str
+    status: str
+    attempts: int
+    processed_key: str | None = None
+    chunks: int | None = None
+    last_error: str | None = None
+
+
 class SearchResult(BaseModel):
     id: str
     source_key: str
@@ -154,6 +164,7 @@ orchestrator = Orchestrator(
     prompt_builder=prompt_builder,
 )
 chat_repository = SQLiteChatRepository(settings.chat_database_path)
+document_repository = SQLiteDocumentRepository(settings.chat_database_path)
 
 s3_client = boto3.client(
     "s3",
@@ -372,6 +383,9 @@ def process_document(payload: ProcessDocumentRequest) -> ProcessDocumentResponse
             detail="Only PDF documents inside incoming/ can be processed",
         )
 
+    if not document_repository.start_processing(payload.key):
+        raise HTTPException(status_code=409, detail="Maximum processing attempts reached")
+
     try:
         response = s3_client.get_object(
             Bucket=settings.s3_bucket_name,
@@ -380,6 +394,7 @@ def process_document(payload: ProcessDocumentRequest) -> ProcessDocumentResponse
         pdf_bytes = response["Body"].read()
         chunks = extract_chunks(pdf_bytes)
     except (ClientError, BotoCoreError, ValueError) as exc:
+        document_repository.mark_failed(payload.key, str(exc))
         raise HTTPException(
             status_code=502,
             detail="Could not read or process the PDF from S3",
@@ -405,6 +420,7 @@ def process_document(payload: ProcessDocumentRequest) -> ProcessDocumentResponse
     try:
         vector_index.upsert(index_records)
     except Exception as exc:
+        document_repository.mark_failed(payload.key, str(exc))
         logger.exception("Could not index document in OpenSearch")
         raise HTTPException(
             status_code=502,
@@ -419,10 +435,13 @@ def process_document(payload: ProcessDocumentRequest) -> ProcessDocumentResponse
             ContentType="application/json",
         )
     except (ClientError, BotoCoreError) as exc:
+        document_repository.mark_failed(payload.key, str(exc))
         raise HTTPException(
             status_code=502,
             detail="Could not save the processed document to S3",
         ) from exc
+
+    document_repository.mark_completed(payload.key, processed_key, len(chunks))
 
     return ProcessDocumentResponse(
         status="processed",
@@ -431,6 +450,23 @@ def process_document(payload: ProcessDocumentRequest) -> ProcessDocumentResponse
         chunks=len(chunks),
         indexed_chunks=len(index_records),
     )
+
+
+@app.get(
+    "/api/v1/documents/{document_key:path}/status",
+    response_model=DocumentStatusResponse,
+    summary="Consultar el estado de procesamiento",
+    tags=["Documents"],
+)
+def document_status(document_key: str) -> DocumentStatusResponse:
+    document = document_repository.get(document_key)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document status not found")
+    return DocumentStatusResponse(**{
+        "source_key": document["source_key"], "status": document["status"],
+        "attempts": document["attempts"], "processed_key": document["processed_key"],
+        "chunks": document["chunks"], "last_error": document["last_error"],
+    })
 
 
 @app.get(

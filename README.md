@@ -32,6 +32,9 @@ FastAPI backend. The current implementation includes:
 - Implemented RAG search and document-processing endpoints.
 - Automated document processing after a successful frontend upload, while
   keeping manual reprocessing available for retries.
+- Added SQLite persistence for document processing state, attempts, errors,
+  processed output and chunk counts.
+- Added a maximum retry limit and the document status endpoint.
 - Implemented an Orchestrator that selects the general or RAG route,
   identifies sources and delegates generation to the configured provider.
 - Added a simulated provider for safe local development.
@@ -53,11 +56,12 @@ FastAPI backend. The current implementation includes:
 
 ### Ingestion and document lifecycle
 
-- Add document processing status tracking: pending, processing, processed and
-  failed.
-- Add idempotency and a retry strategy for failed processing jobs.
 - Replace the frontend-triggered processing call with an S3 event-driven
   workflow using Lambda and/or SQS for production.
+- Migrate document and conversation persistence from SQLite to DynamoDB or
+  another managed production database.
+- Add a durable queue, exponential backoff and dead-letter handling for
+  processing jobs.
 - Add document deletion and re-indexing controls.
 
 ### RAG and assistant quality

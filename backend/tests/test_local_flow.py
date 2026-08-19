@@ -3,6 +3,8 @@ from io import BytesIO
 from fastapi.testclient import TestClient
 
 from app.main import app, rag_service
+from app.document_repository import SQLiteDocumentRepository
+from app.embeddings import SimulatedEmbeddingProvider
 from app.vector_index import LocalVectorIndex
 
 
@@ -25,6 +27,13 @@ def test_local_document_to_rag_chat_flow(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("app.main.s3_client", fake_s3)
     monkeypatch.setattr("app.main.vector_index", local_index)
     monkeypatch.setattr(rag_service, "vector_store", local_index)
+    local_embeddings = SimulatedEmbeddingProvider(dimensions=64)
+    monkeypatch.setattr("app.main.embedding_provider", local_embeddings)
+    monkeypatch.setattr(rag_service, "embedding_provider", local_embeddings)
+    monkeypatch.setattr(
+        "app.main.document_repository",
+        SQLiteDocumentRepository(tmp_path / "documents.db"),
+    )
     monkeypatch.setattr("app.main.settings.s3_bucket_name", "test-bucket")
     monkeypatch.setattr(
         "app.main.extract_chunks",
