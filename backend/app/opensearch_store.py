@@ -33,6 +33,9 @@ class OpenSearchVectorStore:
             use_ssl=True,
             verify_certs=True,
             connection_class=RequestsHttpConnection,
+            timeout=120,
+            max_retries=2,
+            retry_on_timeout=True,
         )
 
     def create_index(self) -> None:
