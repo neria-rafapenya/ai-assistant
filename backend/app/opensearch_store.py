@@ -22,7 +22,7 @@ class OpenSearchVectorStore:
             return
 
         from boto3 import Session
-        from opensearchpy import AWSV4SignerAuth, OpenSearch
+        from opensearchpy import AWSV4SignerAuth, OpenSearch, RequestsHttpConnection
 
         credentials = Session().get_credentials()
         auth = AWSV4SignerAuth(credentials, region, service)
@@ -31,6 +31,7 @@ class OpenSearchVectorStore:
             http_auth=auth,
             use_ssl=True,
             verify_certs=True,
+            connection_class=RequestsHttpConnection,
         )
 
     def create_index(self) -> None:
