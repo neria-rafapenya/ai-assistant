@@ -26,6 +26,9 @@ FastAPI backend. The current implementation includes:
 - Validated chat message persistence in DynamoDB with the FastAPI backend.
 - Added a GitHub Actions CI workflow that runs backend tests and frontend
   lint/build checks on pushes to `main` and pull requests.
+- Added a GitHub Actions CD workflow that publishes the API image to ECR,
+  forces an ECS deployment, uploads the frontend to S3 and invalidates
+  CloudFront.
 - Added a separate `backend/Dockerfile.backend` for serving the FastAPI API;
   the existing `Dockerfile.lambda` remains dedicated to document jobs.
 - Added a vector-store abstraction with local and OpenSearch Serverless
@@ -116,10 +119,8 @@ FastAPI backend. The current implementation includes:
 
 ### Deployment
 
-- Publish the frontend and configure its public CORS origin.
+- Add staging and production CD environments.
 - Define infrastructure as code.
-- Deploy the API, frontend and asynchronous processing workflow.
-- Add CD deployment, staging and production environments.
 - Add backups, retention policies and disaster-recovery procedures.
 
 ## Deployment commands
@@ -329,6 +330,26 @@ aws cloudfront create-invalidation \
   --distribution-id DISTRIBUTION_ID \
   --paths "/*" \
   --profile ai-assistant-dev
+```
+
+### GitHub Actions CD configuration
+
+The workflow `.github/workflows/deploy.yml` runs on pushes to `main` and can
+also be started manually. Configure these GitHub repository values before
+using it:
+
+- Secret `AWS_DEPLOY_ROLE_ARN`: IAM role trusted by GitHub Actions through
+  OIDC, with permissions for ECR push, ECS deployment, S3 frontend upload and
+  CloudFront invalidation.
+- Variable `CLOUDFRONT_DISTRIBUTION_ID`: current distribution ID
+  `E2B4Q04OL4DTCN`.
+
+The workflow builds React with the public ECS API URL, publishes the API
+image, forces an ECS deployment, uploads `frontend/dist/` to S3 and invalidates
+CloudFront. The current ECS CORS origin is:
+
+```text
+https://d38nzp4j8k9sdf.cloudfront.net
 ```
 
 For the current local-to-remote API test, use this value in `.env` before the
