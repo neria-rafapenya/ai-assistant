@@ -36,7 +36,7 @@ FastAPI backend. The current implementation includes:
   processed output and chunk counts.
 - Added a maximum retry limit and the document status endpoint.
 - Prepared an S3 `ObjectCreated` Lambda handler that reuses the backend
-  document processor; deployment and queue wiring remain pending.
+  document processor.
 - Prepared a Lambda container image definition with the backend runtime
   dependencies.
 - Created the ECR repository `ai-assistant-document-processor` in
@@ -45,9 +45,9 @@ FastAPI backend. The current implementation includes:
   was rebuilt for the Lambda-compatible `linux/amd64` platform.
 - Created the Lambda function `ai-assistant-document-processor` from the ECR
   image and configured its execution role.
-- Added the S3 `ObjectCreated` trigger for PDFs under `incoming/`.
-- Validated the automatic flow: uploading a PDF to S3 creates the processed
-  JSON under `processed/` through Lambda.
+- Configured S3 to publish PDF creation events from `incoming/` to SQS.
+- Configured Lambda to consume the SQS queue with a 60-second timeout and
+  1024 MB of memory.
 - Added an SQS standard queue and dead-letter queue between S3 and Lambda.
 - Updated the Lambda handler to process SQS-wrapped S3 notifications.
 - Validated the S3 → SQS → Lambda document-processing flow.
@@ -67,7 +67,8 @@ FastAPI backend. The current implementation includes:
 - OpenSearch RAG indexing is working.
 - Bedrock embeddings with Titan V2 are working in the development index.
 - The simulated embedding provider remains available as a local fallback.
-- Automatic S3-to-Lambda PDF processing is working in the development account.
+- Automatic S3-to-SQS-to-Lambda PDF processing is working in the development
+  account.
 - The backend and frontend are still running locally during development.
 - No public application domain has been configured yet.
 
@@ -77,7 +78,7 @@ FastAPI backend. The current implementation includes:
 
 - Migrate document and conversation persistence from SQLite to DynamoDB or
   another managed production database.
-- Add a durable queue, exponential backoff and dead-letter handling for
+- Add explicit retry/backoff observability and operational alerts for
   processing jobs.
 - Add document deletion and re-indexing controls.
 
@@ -191,11 +192,11 @@ docker push \
   ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com/ai-assistant-document-processor:latest
 ```
 
-The image has been built and published successfully. The Lambda function and
-S3 PDF trigger are now working in the development account. The ECR image is
-the deployment artifact; it is not a public application domain.
-The next deployment steps are adding SQS buffering and a dead-letter queue,
-migrating persistence to DynamoDB, and deploying the public API and frontend.
+The image has been built and published successfully. The Lambda function,
+SQS trigger and S3 notification are now working in the development account.
+The ECR image is the deployment artifact; it is not a public application
+domain. The next deployment steps are migrating persistence to DynamoDB and
+deploying the public API and frontend.
 
 ## Current URLs and public domain
 
