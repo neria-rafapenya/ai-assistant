@@ -35,6 +35,8 @@ FastAPI backend. The current implementation includes:
 - Added SQLite persistence for document processing state, attempts, errors,
   processed output and chunk counts.
 - Added a maximum retry limit and the document status endpoint.
+- Prepared an S3 `ObjectCreated` Lambda handler that reuses the backend
+  document processor; deployment and queue wiring remain pending.
 - Implemented an Orchestrator that selects the general or RAG route,
   identifies sources and delegates generation to the configured provider.
 - Added a simulated provider for safe local development.
@@ -56,8 +58,7 @@ FastAPI backend. The current implementation includes:
 
 ### Ingestion and document lifecycle
 
-- Replace the frontend-triggered processing call with an S3 event-driven
-  workflow using Lambda and/or SQS for production.
+- Deploy the S3 event-driven workflow using Lambda and/or SQS for production.
 - Migrate document and conversation persistence from SQLite to DynamoDB or
   another managed production database.
 - Add a durable queue, exponential backoff and dead-letter handling for
