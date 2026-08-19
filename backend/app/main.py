@@ -17,7 +17,7 @@ from app.prompt_builder import PromptBuilder
 from app.providers import BedrockChatProvider, ProviderManager, SimulatedChatProvider
 from app.rag_service import RAGService
 from app.settings import settings
-from app.vector_index import LocalVectorIndex
+from app.vector_store import create_vector_store
 
 
 class HealthResponse(BaseModel):
@@ -91,7 +91,11 @@ app = FastAPI(
 
 chat_provider = SimulatedChatProvider()
 embedding_provider = SimulatedEmbeddingProvider(settings.embedding_dimensions)
-vector_index = LocalVectorIndex(settings.local_index_path, settings.embedding_dimensions)
+vector_index = create_vector_store(
+    backend=settings.vector_store_backend,
+    local_index_path=settings.local_index_path,
+    dimensions=settings.embedding_dimensions,
+)
 providers = {"simulated": chat_provider}
 if settings.bedrock_model_id:
     providers["bedrock"] = BedrockChatProvider(

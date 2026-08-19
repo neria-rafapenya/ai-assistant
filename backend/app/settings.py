@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     bedrock_model_id: str = ""
     bedrock_max_tokens: int = 512
     bedrock_temperature: float = 0.2
+    vector_store_backend: str = "local"
+    opensearch_endpoint: str = ""
+    opensearch_index: str = "ai-assistant-documents"
     embedding_dimensions: int = 64
     local_index_path: Path = ROOT_DIR / "backend" / "data" / "vector_index.json"
 
