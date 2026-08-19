@@ -26,6 +26,8 @@ FastAPI backend. The current implementation includes:
 - Validated chat message persistence in DynamoDB with the FastAPI backend.
 - Added a GitHub Actions CI workflow that runs backend tests and frontend
   lint/build checks on pushes to `main` and pull requests.
+- Added a separate `backend/Dockerfile.backend` for serving the FastAPI API;
+  the existing `Dockerfile.lambda` remains dedicated to document jobs.
 - Added a vector-store abstraction with local and OpenSearch Serverless
   implementations.
 - Created the OpenSearch Serverless vector collection and configured its
@@ -113,7 +115,7 @@ FastAPI backend. The current implementation includes:
 
 ### Deployment
 
-- Containerize the backend and frontend.
+- Containerize the frontend and publish the backend API image.
 - Define infrastructure as code.
 - Deploy the API, frontend and asynchronous processing workflow.
 - Add CD deployment, staging and production environments.
