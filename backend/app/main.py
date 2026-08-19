@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import logging
 from pathlib import PurePath
 from uuid import uuid4
 
@@ -19,6 +20,9 @@ from app.providers import BedrockChatProvider, ProviderManager, SimulatedChatPro
 from app.rag_service import RAGService
 from app.settings import settings
 from app.vector_store import create_vector_store
+
+
+logger = logging.getLogger(__name__)
 
 
 class HealthResponse(BaseModel):
@@ -384,9 +388,10 @@ def process_document(payload: ProcessDocumentRequest) -> ProcessDocumentResponse
     try:
         vector_index.upsert(index_records)
     except Exception as exc:
+        logger.exception("Could not index document in OpenSearch")
         raise HTTPException(
             status_code=502,
-            detail="Could not index the processed document in OpenSearch",
+            detail=f"Could not index the processed document in OpenSearch: {exc}",
         ) from exc
 
     try:
