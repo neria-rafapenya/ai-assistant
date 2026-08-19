@@ -1,6 +1,11 @@
 import hashlib
+import json
 import math
 import re
+from typing import Any
+
+import boto3
+from botocore.config import Config
 
 
 class SimulatedEmbeddingProvider:
@@ -23,3 +28,40 @@ class SimulatedEmbeddingProvider:
         if norm == 0:
             return vector
         return [value / norm for value in vector]
+
+
+class BedrockEmbeddingProvider:
+    """Generates semantic vectors with Amazon Titan Text Embeddings V2."""
+
+    def __init__(self, region: str, model_id: str, dimensions: int = 512, client: Any | None = None) -> None:
+        self.model_id = model_id
+        self.dimensions = dimensions
+        self.client = client or boto3.client(
+            "bedrock-runtime",
+            region_name=region,
+            config=Config(read_timeout=60, retries={"max_attempts": 2}),
+        )
+
+    def embed(self, text: str) -> list[float]:
+        if not text.strip():
+            raise ValueError("Embedding input text cannot be empty")
+
+        response = self.client.invoke_model(
+            modelId=self.model_id,
+            body=json.dumps({
+                "inputText": text,
+                "dimensions": self.dimensions,
+                "normalize": True,
+            }),
+            contentType="application/json",
+            accept="application/json",
+        )
+        payload = json.loads(response["body"].read())
+        embedding = payload.get("embedding")
+        if not embedding:
+            raise RuntimeError("Bedrock returned an empty embedding")
+        if len(embedding) != self.dimensions:
+            raise RuntimeError(
+                f"Expected {self.dimensions} embedding values, got {len(embedding)}"
+            )
+        return embedding

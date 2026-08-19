@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     bedrock_model_id: str = ""
     bedrock_max_tokens: int = 512
     bedrock_temperature: float = 0.2
+    embedding_provider: str = "simulated"
+    bedrock_embedding_model_id: str = "amazon.titan-embed-text-v2:0"
     vector_store_backend: str = "local"
     opensearch_endpoint: str = ""
     opensearch_index: str = "ai-assistant-documents"

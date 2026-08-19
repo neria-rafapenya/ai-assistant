@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from app.embeddings import SimulatedEmbeddingProvider
+from app.embeddings import BedrockEmbeddingProvider, SimulatedEmbeddingProvider
 from app.chat_repository import SQLiteChatRepository
 from app.ingestion import extract_chunks
 from app.orchestrator import Orchestrator
@@ -118,7 +118,16 @@ app = FastAPI(
 )
 
 chat_provider = SimulatedChatProvider()
-embedding_provider = SimulatedEmbeddingProvider(settings.embedding_dimensions)
+if settings.embedding_provider == "bedrock":
+    embedding_provider = BedrockEmbeddingProvider(
+        region=settings.aws_region,
+        model_id=settings.bedrock_embedding_model_id,
+        dimensions=settings.embedding_dimensions,
+    )
+elif settings.embedding_provider == "simulated":
+    embedding_provider = SimulatedEmbeddingProvider(settings.embedding_dimensions)
+else:
+    raise ValueError(f"Unknown embedding provider: {settings.embedding_provider}")
 vector_index = create_vector_store(
     backend=settings.vector_store_backend,
     local_index_path=settings.local_index_path,
