@@ -381,7 +381,13 @@ def process_document(payload: ProcessDocumentRequest) -> ProcessDocumentResponse
         }
         for chunk in chunks
     ]
-    vector_index.upsert(index_records)
+    try:
+        vector_index.upsert(index_records)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not index the processed document in OpenSearch",
+        ) from exc
 
     try:
         s3_client.put_object(

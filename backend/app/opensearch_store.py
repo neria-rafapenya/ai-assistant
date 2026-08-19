@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 
@@ -72,7 +73,15 @@ class OpenSearchVectorStore:
 
         response = self.client.bulk(body=operations, refresh="wait_for")
         if response.get("errors"):
-            raise RuntimeError("OpenSearch bulk upsert failed")
+            errors = []
+            for item in response.get("items", []):
+                operation = next(iter(item.values()), {})
+                if "error" in operation:
+                    errors.append(operation["error"])
+            raise RuntimeError(
+                "OpenSearch bulk upsert failed: "
+                f"{json.dumps(errors[:1], ensure_ascii=False)}"
+            )
 
     def search(self, vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
         response = self.client.search(
