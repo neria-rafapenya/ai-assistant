@@ -128,7 +128,16 @@ app.add_middleware(
 )
 
 
-@app.get("/health", response_model=HealthResponse)
+@app.get(
+    "/health",
+    response_model=HealthResponse,
+    summary="Comprobar el estado del backend",
+    description=(
+        "Verifica que la API está activa y devuelve la región de AWS "
+        "configurada para el entorno actual."
+    ),
+    tags=["System"],
+)
 def health() -> HealthResponse:
     return HealthResponse(
         status="ok",
@@ -136,7 +145,17 @@ def health() -> HealthResponse:
     )
 
 
-@app.post("/api/v1/chat", response_model=ChatResponse)
+@app.post(
+    "/api/v1/chat",
+    response_model=ChatResponse,
+    summary="Enviar un mensaje al asistente",
+    description=(
+        "Envía una consulta al Orchestrator. El Orchestrator decide si debe "
+        "usar la ruta general o la ruta RAG y devuelve la respuesta junto "
+        "con el proveedor, la ruta y las fuentes utilizadas."
+    ),
+    tags=["Chat"],
+)
 def chat(payload: ChatRequest) -> ChatResponse:
     try:
         result = orchestrator.handle(payload.message)
@@ -155,7 +174,16 @@ def chat(payload: ChatRequest) -> ChatResponse:
     )
 
 
-@app.get("/api/v1/documents", response_model=DocumentsResponse)
+@app.get(
+    "/api/v1/documents",
+    response_model=DocumentsResponse,
+    summary="Listar documentos de entrada",
+    description=(
+        "Obtiene desde Amazon S3 los documentos disponibles bajo el prefijo "
+        "incoming/."
+    ),
+    tags=["Documents"],
+)
 def list_documents() -> DocumentsResponse:
     if not settings.s3_bucket_name:
         raise HTTPException(
@@ -187,7 +215,17 @@ def list_documents() -> DocumentsResponse:
     return DocumentsResponse(documents=documents)
 
 
-@app.post("/api/v1/documents/upload-url", response_model=UploadUrlResponse)
+@app.post(
+    "/api/v1/documents/upload-url",
+    response_model=UploadUrlResponse,
+    summary="Generar una URL prefirmada de subida",
+    description=(
+        "Genera una URL temporal para que el frontend pueda subir "
+        "directamente un PDF a Amazon S3 sin exponer credenciales AWS. "
+        "El objeto se crea bajo incoming/."
+    ),
+    tags=["Documents"],
+)
 def create_upload_url(payload: UploadUrlRequest) -> UploadUrlResponse:
     if not settings.s3_bucket_name:
         raise HTTPException(
@@ -234,7 +272,16 @@ def create_upload_url(payload: UploadUrlRequest) -> UploadUrlResponse:
     )
 
 
-@app.post("/api/v1/documents/process", response_model=ProcessDocumentResponse)
+@app.post(
+    "/api/v1/documents/process",
+    response_model=ProcessDocumentResponse,
+    summary="Procesar un documento PDF",
+    description=(
+        "Descarga un PDF desde incoming/ en Amazon S3, extrae sus fragmentos, "
+        "los indexa en el índice local y guarda el resultado bajo processed/."
+    ),
+    tags=["Documents"],
+)
 def process_document(payload: ProcessDocumentRequest) -> ProcessDocumentResponse:
     if not settings.s3_bucket_name:
         raise HTTPException(
@@ -302,7 +349,17 @@ def process_document(payload: ProcessDocumentRequest) -> ProcessDocumentResponse
     )
 
 
-@app.get("/api/v1/rag/search", response_model=SearchResponse)
+@app.get(
+    "/api/v1/rag/search",
+    response_model=SearchResponse,
+    summary="Buscar contexto en el índice RAG",
+    description=(
+        "Busca los fragmentos más relevantes para una consulta usando el "
+        "índice vectorial local actual. Estos resultados sirven como contexto "
+        "para la ruta RAG del Orchestrator."
+    ),
+    tags=["RAG"],
+)
 def search_rag(
     query: str = Query(min_length=1, max_length=4000),
     limit: int = Query(default=5, ge=1, le=20),
