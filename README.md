@@ -24,6 +24,8 @@ FastAPI backend. The current implementation includes:
   fallback, selected through `PERSISTENCE_BACKEND`.
 - Validated document processing state persistence in DynamoDB from Lambda.
 - Validated chat message persistence in DynamoDB with the FastAPI backend.
+- Added a GitHub Actions CI workflow that runs backend tests and frontend
+  lint/build checks on pushes to `main` and pull requests.
 - Added a vector-store abstraction with local and OpenSearch Serverless
   implementations.
 - Created the OpenSearch Serverless vector collection and configured its
@@ -114,7 +116,7 @@ FastAPI backend. The current implementation includes:
 - Containerize the backend and frontend.
 - Define infrastructure as code.
 - Deploy the API, frontend and asynchronous processing workflow.
-- Add CI/CD, staging and production environments.
+- Add CD deployment, staging and production environments.
 - Add backups, retention policies and disaster-recovery procedures.
 
 ## Lambda container deployment to ECR
