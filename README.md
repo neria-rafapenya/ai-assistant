@@ -39,6 +39,10 @@ FastAPI backend. The current implementation includes:
   document processor; deployment and queue wiring remain pending.
 - Prepared a Lambda container image definition with the backend runtime
   dependencies.
+- Created the ECR repository `ai-assistant-document-processor` in
+  `eu-west-1`.
+- Built, tagged and published the Lambda container image to ECR with digest
+  `sha256:1fc03d8eb9253c28eeab2c70f553fb2d786b869b0ce7736888f8fc2506bddd8f`.
 - Implemented an Orchestrator that selects the general or RAG route,
   identifies sources and delegates generation to the configured provider.
 - Added a simulated provider for safe local development.
@@ -55,12 +59,14 @@ FastAPI backend. The current implementation includes:
 - OpenSearch RAG indexing is working.
 - Bedrock embeddings with Titan V2 are working in the development index.
 - The simulated embedding provider remains available as a local fallback.
+- The backend and frontend are still running locally during development.
+- No public application domain has been configured yet.
 
 ## TODO
 
 ### Ingestion and document lifecycle
 
-- Build and publish the Lambda image to Amazon ECR.
+- Create the Lambda function from the image already published in Amazon ECR.
 - Deploy the Lambda and configure the S3 event notification.
 - Add SQS buffering and a dead-letter queue between S3 and Lambda.
 - Migrate document and conversation persistence from SQLite to DynamoDB or
@@ -98,6 +104,106 @@ FastAPI backend. The current implementation includes:
 - Deploy the API, frontend and asynchronous processing workflow.
 - Add CI/CD, staging and production environments.
 - Add backups, retention policies and disaster-recovery procedures.
+
+## Lambda container deployment to ECR
+
+The document processor is prepared as a Lambda container image using
+`backend/Dockerfile.lambda`. The following procedure builds the image and
+publishes it to Amazon ECR in `eu-west-1`.
+
+### Prerequisites
+
+- Docker Desktop must be running.
+- AWS CLI must be configured with the `ai-assistant-dev` SSO profile.
+- The current directory must be `backend/`.
+
+Check Docker before building:
+
+```bash
+docker info
+```
+
+If Docker is not running on macOS:
+
+```bash
+open -a Docker
+```
+
+### Build and publish
+
+```bash
+cd /Users/rafa_penya/Documents/GitHub/ai-assistant/backend
+source ../.venv/bin/activate
+export AWS_PROFILE=ai-assistant-dev
+export AWS_REGION=eu-west-1
+```
+
+Create the ECR repository once:
+
+```bash
+aws ecr create-repository \
+  --repository-name ai-assistant-document-processor \
+  --image-scanning-configuration scanOnPush \
+  --region eu-west-1 \
+  --profile ai-assistant-dev
+```
+
+Build the Lambda image:
+
+```bash
+docker build \
+  -f Dockerfile.lambda \
+  -t ai-assistant-document-processor:latest \
+  .
+```
+
+Get the AWS account ID and authenticate Docker with ECR:
+
+```bash
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
+  --profile ai-assistant-dev \
+  --query Account \
+  --output text)
+
+aws ecr get-login-password \
+  --region eu-west-1 \
+  --profile ai-assistant-dev \
+  | docker login \
+  --username AWS \
+  --password-stdin \
+  ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com
+```
+
+Tag and publish the image:
+
+```bash
+docker tag \
+  ai-assistant-document-processor:latest \
+  ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com/ai-assistant-document-processor:latest
+
+docker push \
+  ${AWS_ACCOUNT_ID}.dkr.ecr.eu-west-1.amazonaws.com/ai-assistant-document-processor:latest
+```
+
+The image has been built and published successfully. The ECR image is only a
+container artifact; it is not yet a running application or a public domain.
+The next deployment steps are creating the Lambda function, configuring its
+IAM execution role, adding the Lambda role to the OpenSearch data-access
+policy, and connecting the S3 event notification.
+
+## Current URLs and public domain
+
+The application currently runs locally:
+
+- Backend API: `http://localhost:8000`
+- Frontend: `http://localhost:5173`
+
+There is no public domain yet. The ECR URI below identifies the stored image,
+not the application URL:
+
+```text
+740862652747.dkr.ecr.eu-west-1.amazonaws.com/ai-assistant-document-processor:latest
+```
 
 ## Environment variables
 
