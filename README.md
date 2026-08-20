@@ -79,6 +79,9 @@ FastAPI backend. The current implementation includes:
   client `ai-assistant-web`.
 - Configured Cognito managed login for the CloudFront and localhost callback
   and sign-out URLs with the Authorization Code flow.
+- Validated the Cognito OIDC login flow locally from `http://localhost:5173/`.
+- Registered both local and CloudFront callback and sign-out URLs in the
+  Cognito app client.
 - Integrated OIDC login/logout in React and protected the Tarot, Sueños and
   Historial routes while keeping `/dev` available for technical testing.
 
@@ -369,11 +372,16 @@ using it:
 
 The workflow builds React with the public ECS API URL, publishes the API
 image, forces an ECS deployment, uploads `frontend/dist/` to S3 and invalidates
-CloudFront. The current ECS CORS origin is:
+CloudFront. The ECS `FRONTEND_ORIGIN` configuration must allow both the
+deployed frontend and the local development frontend:
 
 ```text
-https://d38nzp4j8k9sdf.cloudfront.net
+https://d38nzp4j8k9sdf.cloudfront.net,http://localhost:5173
 ```
+
+The origins must be written without trailing slashes. After changing an ECS
+environment variable, wait for the new deployment to reach `Running` before
+testing the API from the browser.
 
 The S3 document bucket must also allow this CloudFront origin for browser
 uploads using presigned URLs. S3 accepts `PUT`, `GET` and `HEAD` in
@@ -403,6 +411,40 @@ Health check:
 
 ```text
 https://ai-5428103d948647f2ac9aa11b2ba6f07a.ecs.eu-west-1.on.aws/health
+```
+
+### Local Cognito login
+
+The Cognito User Pool is `eu-west-1_5fX8JYeKk` and the SPA app client is
+`ai-assistant-web`. Its allowed callback and sign-out URLs are:
+
+```text
+http://localhost:5173/
+https://d38nzp4j8k9sdf.cloudfront.net/
+```
+
+The local `.env` file is stored at the repository root. Vite is configured to
+read it from the frontend project through `envDir: ".."` in
+`frontend/vite.config.ts`:
+
+```env
+VITE_COGNITO_ISSUER=https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_5fX8JYeKk
+VITE_COGNITO_CLIENT_ID=4086ign9h6tpj0r5o1mhhab74n
+VITE_COGNITO_REDIRECT_URI=http://localhost:5173/
+VITE_COGNITO_LOGOUT_URI=http://localhost:5173/
+```
+
+Start the frontend from `frontend/`:
+
+```bash
+npm run dev
+```
+
+If the browser continues using an old OAuth configuration, stop the dev
+server and restart Vite with a clean dependency cache:
+
+```bash
+npm run dev -- --force
 ```
 
 ## Demo validation from CloudFront
@@ -437,7 +479,12 @@ image, not the application URL:
 Configured in `.env` and documented in `.env.example`:
 
 - `VITE_API_BASE_URL=http://localhost:8000`
-- `FRONTEND_ORIGIN=http://localhost:5173`
+- `VITE_COGNITO_ISSUER=https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_5fX8JYeKk`
+- `VITE_COGNITO_CLIENT_ID=4086ign9h6tpj0r5o1mhhab74n`
+- `VITE_COGNITO_REDIRECT_URI=http://localhost:5173/`
+- `VITE_COGNITO_LOGOUT_URI=http://localhost:5173/`
+- `FRONTEND_ORIGIN=http://localhost:5173` (local) or
+  `https://d38nzp4j8k9sdf.cloudfront.net,http://localhost:5173` (ECS)
 - `AWS_REGION=eu-west-1`
 - `S3_BUCKET_NAME=`
 - `AI_PROVIDER=simulated`
