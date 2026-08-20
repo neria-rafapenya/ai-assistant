@@ -6,3 +6,4 @@ opensearch-py>=2.8.0
 pypdf>=5.0.0
 pytest>=8.4.0
 httpx>=0.28.0
+PyJWT[crypto]>=2.10.0

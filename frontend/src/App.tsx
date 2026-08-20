@@ -58,6 +58,7 @@ type SearchResponse = {
 };
 
 function DevPage() {
+  const auth = useAuth();
   const [message, setMessage] = useState("");
   const [reply, setReply] = useState("");
   const [provider, setProvider] = useState("");
@@ -87,6 +88,10 @@ function DevPage() {
     () => import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000",
     [],
   );
+
+  const authHeaders = () => ({
+    Authorization: `Bearer ${auth.user?.access_token ?? ""}`,
+  });
 
   const formatSize = (size: number) =>
     `${new Intl.NumberFormat("es-ES").format(size)} bytes`;
@@ -118,7 +123,9 @@ function DevPage() {
     setDocumentsError("");
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/v1/documents`);
+      const response = await fetch(`${apiBaseUrl}/api/v1/documents`, {
+        headers: authHeaders(),
+      });
       if (!response.ok) {
         throw new Error(`Documents fallo con status ${response.status}`);
       }
@@ -149,6 +156,7 @@ function DevPage() {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          ...authHeaders(),
         },
         body: JSON.stringify({
           message: trimmed,
@@ -205,6 +213,7 @@ function DevPage() {
           method: "POST",
           headers: {
             "content-type": "application/json",
+            ...authHeaders(),
           },
           body: JSON.stringify({
             filename: selectedFile.name,
@@ -254,6 +263,7 @@ function DevPage() {
         method: "POST",
         headers: {
           "content-type": "application/json",
+          ...authHeaders(),
         },
         body: JSON.stringify({ key }),
       });
@@ -290,6 +300,7 @@ function DevPage() {
     try {
       const response = await fetch(
         `${apiBaseUrl}/api/v1/rag/search?query=${encodeURIComponent(query)}&limit=5`,
+        { headers: authHeaders() },
       );
       if (!response.ok) {
         throw new Error(`La búsqueda falló (${response.status})`);

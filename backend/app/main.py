@@ -7,11 +7,12 @@ from uuid import uuid4
 import boto3
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app.embeddings import BedrockEmbeddingProvider, SimulatedEmbeddingProvider
+from app.auth import AuthenticatedUser, get_current_user
 from app.chat_repository import DynamoDBChatRepository, SQLiteChatRepository
 from app.document_repository import DynamoDBDocumentRepository, SQLiteDocumentRepository
 from app.ingestion import extract_chunks
@@ -231,7 +232,10 @@ def health() -> HealthResponse:
     ),
     tags=["Chat"],
 )
-def chat(payload: ChatRequest) -> ChatResponse:
+def chat(
+    payload: ChatRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> ChatResponse:
     session_id = payload.session_id or str(uuid4())
     try:
         result = orchestrator.handle(payload.message, provider_name=payload.provider)
@@ -275,7 +279,10 @@ def chat(payload: ChatRequest) -> ChatResponse:
     ),
     tags=["Chat"],
 )
-def get_chat_history(session_id: str) -> ChatHistoryResponse:
+def get_chat_history(
+    session_id: str,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> ChatHistoryResponse:
     messages = chat_repository.list_messages(session_id)
     return ChatHistoryResponse(session_id=session_id, messages=messages)
 
@@ -290,7 +297,9 @@ def get_chat_history(session_id: str) -> ChatHistoryResponse:
     ),
     tags=["Documents"],
 )
-def list_documents() -> DocumentsResponse:
+def list_documents(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> DocumentsResponse:
     if not settings.s3_bucket_name:
         raise HTTPException(
             status_code=503,
@@ -332,7 +341,10 @@ def list_documents() -> DocumentsResponse:
     ),
     tags=["Documents"],
 )
-def create_upload_url(payload: UploadUrlRequest) -> UploadUrlResponse:
+def create_upload_url(
+    payload: UploadUrlRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> UploadUrlResponse:
     if not settings.s3_bucket_name:
         raise HTTPException(
             status_code=503,
@@ -388,7 +400,10 @@ def create_upload_url(payload: UploadUrlRequest) -> UploadUrlResponse:
     ),
     tags=["Documents"],
 )
-def process_document(payload: ProcessDocumentRequest) -> ProcessDocumentResponse:
+def process_document(
+    payload: ProcessDocumentRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> ProcessDocumentResponse:
     if not settings.s3_bucket_name:
         raise HTTPException(
             status_code=503,
@@ -476,7 +491,10 @@ def process_document(payload: ProcessDocumentRequest) -> ProcessDocumentResponse
     summary="Consultar el estado de procesamiento",
     tags=["Documents"],
 )
-def document_status(document_key: str) -> DocumentStatusResponse:
+def document_status(
+    document_key: str,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> DocumentStatusResponse:
     document = document_repository.get(document_key)
     if document is None:
         raise HTTPException(status_code=404, detail="Document status not found")
@@ -501,6 +519,7 @@ def document_status(document_key: str) -> DocumentStatusResponse:
 def search_rag(
     query: str = Query(min_length=1, max_length=4000),
     limit: int = Query(default=5, ge=1, le=20),
+    current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> SearchResponse:
     results = vector_index.search(embedding_provider.embed(query), limit)
     return SearchResponse(

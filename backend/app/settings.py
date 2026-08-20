@@ -8,6 +8,10 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:5173"
+    cognito_issuer: str = (
+        "https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_5fX8JYeKk"
+    )
+    cognito_client_id: str = "4086ign9h6tpj0r5o1mhhab74n"
     s3_bucket_name: str = ""
     aws_region: str = "eu-west-1"
     ai_provider: str = "simulated"

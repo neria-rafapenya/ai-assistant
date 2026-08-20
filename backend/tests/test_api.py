@@ -13,6 +13,15 @@ def test_health_check() -> None:
     assert response.json() == {"status": "ok", "aws_region": "eu-west-1"}
 
 
+def test_chat_requires_authentication() -> None:
+    app.dependency_overrides.clear()
+    client = TestClient(app)
+
+    response = client.post("/api/v1/chat", json={"message": "hola"})
+
+    assert response.status_code == 401
+
+
 def test_chat_ok(monkeypatch) -> None:
     client = TestClient(app)
 
