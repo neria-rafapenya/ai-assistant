@@ -29,6 +29,7 @@ jobs:
     name: Deploy API and frontend
     runs-on: ubuntu-latest
     environment: dev
+
     permissions:
       id-token: write
       contents: read
