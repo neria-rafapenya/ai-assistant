@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 from types import SimpleNamespace
 
 from app.main import app
+from app.tarot import find_related_readings
 
 
 def test_health_check() -> None:
@@ -87,6 +88,25 @@ def test_tarot_read_builds_general_interpretation(monkeypatch) -> None:
     assert response.json()["provider"] == "simulated"
     assert "Devuelve únicamente la lectura general" in captured["prompt"]
     assert "Interpretación de cada carta" not in captured["prompt"]
+
+
+def test_related_tarot_readings_match_similar_questions() -> None:
+    related = find_related_readings(
+        "¿Qué debería tener en cuenta en el partido del domingo?",
+        [
+            {
+                "question": "¿Qué debería tener en cuenta en el partido del sábado?",
+                "reading": "Una lectura anterior.",
+            },
+            {
+                "question": "¿Cómo puedo organizar mejor mis vacaciones?",
+                "reading": "Otra lectura.",
+            },
+        ],
+    )
+
+    assert len(related) == 1
+    assert "partido" in related[0]["question"]
 
 
 def test_tarot_read_rejects_wrong_spread_size() -> None:

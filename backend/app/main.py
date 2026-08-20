@@ -22,7 +22,7 @@ from app.providers import BedrockChatProvider, ProviderManager, SimulatedChatPro
 from app.profile_repository import DynamoDBProfileRepository, SQLiteProfileRepository
 from app.rag_service import RAGService
 from app.settings import settings
-from app.tarot import MAJOR_ARCANA, build_tarot_prompt
+from app.tarot import MAJOR_ARCANA, build_tarot_prompt, find_related_readings
 from app.tarot_repository import (
     DynamoDBTarotReadingRepository,
     SQLiteTarotReadingRepository,
@@ -450,12 +450,19 @@ def tarot_read(
 
     consume_usage(current_user, "tarot")
     profile = profile_repository.get(current_user.sub) or {}
+    related_readings: list[dict] = []
+    try:
+        recent_readings = tarot_reading_repository.list_for_user(current_user.sub, limit=10)
+        related_readings = find_related_readings(payload.question, recent_readings)
+    except Exception:
+        logger.warning("Could not load tarot history context", exc_info=True)
     prompt = build_tarot_prompt(
         question=payload.question.strip(),
         spread=payload.spread,
         cards=[card.model_dump() for card in payload.cards],
         style=payload.style,
         profile=profile,
+        related_readings=related_readings,
     )
     try:
         result = provider_manager.generate_reply(prompt, provider_name=payload.provider)
