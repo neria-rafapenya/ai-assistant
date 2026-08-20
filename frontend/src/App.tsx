@@ -638,6 +638,130 @@ function HomePage() {
   );
 }
 
+type TarotSpread = "one" | "three";
+
+type TarotCard = {
+  id: string;
+  name: string;
+  image: string;
+  meaning: string;
+};
+
+const tarotCards: TarotCard[] = [
+  { id: "00-el-loco", name: "El Loco", image: "00-el-loco.webp", meaning: "Comienzos, libertad y apertura a lo desconocido." },
+  { id: "01-el-mago", name: "El Mago", image: "01-el-mago.webp", meaning: "Recursos, iniciativa y capacidad de crear movimiento." },
+  { id: "02-la-sacerdotisa", name: "La Sacerdotisa", image: "02-la-sacerdotisa.webp", meaning: "Intuición, escucha interior y conocimiento reservado." },
+  { id: "03-la-emperatriz", name: "La Emperatriz", image: "03-la-emperatriz.webp", meaning: "Creatividad, cuidado y crecimiento fértil." },
+  { id: "04-el-emperador", name: "El Emperador", image: "04-el-emperador.webp", meaning: "Estructura, límites y responsabilidad." },
+  { id: "05-el-papa", name: "El Papa", image: "05-el-papa.webp", meaning: "Aprendizaje, valores y orientación." },
+  { id: "06-los-enamorados", name: "Los Enamorados", image: "06-los-enamorados.webp", meaning: "Elección, vínculo y coherencia con los propios valores." },
+  { id: "07-el-carro", name: "El Carro", image: "07-el-carro.webp", meaning: "Dirección, voluntad y avance decidido." },
+  { id: "08-la-fuerza", name: "La Fuerza", image: "08-la-fuerza.webp", meaning: "Serenidad, coraje y dominio amable de la energía." },
+  { id: "09-el-ermitano", name: "El Ermitaño", image: "09-el-ermitano.webp", meaning: "Pausa, introspección y búsqueda de claridad." },
+  { id: "10-la-rueda", name: "La Rueda de la Fortuna", image: "10-la-rueda.webp", meaning: "Cambio, ciclos y nuevas circunstancias." },
+  { id: "11-la-justicia", name: "La Justicia", image: "11-la-justicia.webp", meaning: "Equilibrio, consecuencias y decisiones conscientes." },
+  { id: "12-el-colgado", name: "El Colgado", image: "12-el-colgado.webp", meaning: "Perspectiva, entrega y pausa necesaria." },
+  { id: "13-la-muerte", name: "La Muerte", image: "13-la-muerte.webp", meaning: "Transformación, cierre y renovación." },
+  { id: "14-la-templanza", name: "La Templanza", image: "14-la-templanza.webp", meaning: "Integración, paciencia y armonía." },
+  { id: "15-el-diablo", name: "El Diablo", image: "15-el-diablo.webp", meaning: "Deseo, ataduras y consciencia de los patrones." },
+  { id: "16-la-torre", name: "La Torre", image: "16-la-torre.webp", meaning: "Revelación, ruptura y liberación de estructuras." },
+  { id: "17-la-estrella", name: "La Estrella", image: "17-la-estrella.webp", meaning: "Esperanza, inspiración y confianza renovada." },
+  { id: "18-la-luna", name: "La Luna", image: "18-la-luna.webp", meaning: "Sensibilidad, imaginación y zonas de incertidumbre." },
+  { id: "19-el-sol", name: "El Sol", image: "19-el-sol.webp", meaning: "Claridad, vitalidad y alegría compartida." },
+  { id: "20-el-juicio", name: "El Juicio", image: "20-el-juicio.webp", meaning: "Llamada interior, revisión y despertar." },
+  { id: "21-el-mundo", name: "El Mundo", image: "21-el-mundo.webp", meaning: "Culminación, integración y amplitud de perspectiva." },
+];
+
+function TarotCardView({ card, position }: { card: TarotCard; position: string }) {
+  const [imageAvailable, setImageAvailable] = useState(true);
+
+  return (
+    <article className="tarot-card-slot">
+      <p className="tarot-card-position">{position}</p>
+      <div className="tarot-card-frame">
+        {imageAvailable ? (
+          <img src={`/tarot/${card.image}`} alt={card.name} onError={() => setImageAvailable(false)} />
+        ) : (
+          <div className="tarot-card-placeholder">
+            <span>✦</span>
+            <small>{card.image}</small>
+          </div>
+        )}
+      </div>
+      <h3>{card.name}</h3>
+      <p>{card.meaning}</p>
+    </article>
+  );
+}
+
+function TarotPage() {
+  const [question, setQuestion] = useState("");
+  const [spread, setSpread] = useState<TarotSpread>("one");
+  const [style, setStyle] = useState("reflexivo");
+  const [drawnCards, setDrawnCards] = useState<TarotCard[]>([]);
+
+  const drawCards = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const count = spread === "one" ? 1 : 3;
+    const shuffled = [...tarotCards].sort(() => Math.random() - 0.5);
+    setDrawnCards(shuffled.slice(0, count));
+  };
+
+  return (
+    <section className="product-page tarot-page">
+      <p className="eyebrow">Tarot</p>
+      <h1>Una lectura para escucharte</h1>
+      <p className="lead">Elige una pregunta y deja que las cartas te ofrezcan una perspectiva para reflexionar.</p>
+      <form className="tarot-setup" onSubmit={drawCards}>
+        <label>
+          ¿Sobre qué quieres consultar?
+          <textarea value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="Ej.: ¿Qué debería tener en cuenta en mi proyecto actual?" required />
+        </label>
+        <fieldset>
+          <legend>Tipo de lectura</legend>
+          <div className="tarot-options">
+            <label className={spread === "one" ? "selected" : ""}>
+              <input type="radio" name="spread" value="one" checked={spread === "one"} onChange={() => setSpread("one")} />
+              <strong>Una carta</strong>
+              <span>Una orientación breve para tu pregunta.</span>
+            </label>
+            <label className={spread === "three" ? "selected" : ""}>
+              <input type="radio" name="spread" value="three" checked={spread === "three"} onChange={() => setSpread("three")} />
+              <strong>Tres cartas</strong>
+              <span>Situación, perspectiva y consejo.</span>
+            </label>
+          </div>
+        </fieldset>
+        <label>
+          Estilo de lectura
+          <select value={style} onChange={(event) => setStyle(event.target.value)}>
+            <option value="directo">Directo</option>
+            <option value="reflexivo">Reflexivo</option>
+            <option value="espiritual">Espiritual</option>
+            <option value="practico">Práctico</option>
+          </select>
+        </label>
+        <button type="submit" className="action tarot-submit">{drawnCards.length ? "Nueva lectura" : "Comenzar lectura"}</button>
+      </form>
+      {drawnCards.length > 0 ? (
+        <section className="tarot-reading" aria-live="polite">
+          <div className="tarot-reading-heading">
+            <div><p className="eyebrow">Tu lectura</p><h2>{spread === "one" ? "Una carta" : "Tres cartas"}</h2></div>
+            <span className="tarot-style">Estilo: {style}</span>
+          </div>
+          <p className="tarot-question">“{question}”</p>
+          <div className={`tarot-cards tarot-cards-${drawnCards.length}`}>
+            {drawnCards.map((card, index) => (
+              <TarotCardView key={card.id} card={card} position={spread === "one" ? "Tu orientación" : ["Situación", "Perspectiva", "Consejo"][index]} />
+            ))}
+          </div>
+          <p className="tarot-note">Las cartas son una herramienta de reflexión, no una predicción objetiva.</p>
+        </section>
+      ) : null}
+    </section>
+  );
+}
+
 function ExperiencePage({ type }: { type: "tarot" | "suenos" }) {
   const isTarot = type === "tarot";
   return (
@@ -721,7 +845,7 @@ function App() {
               path="/tarot"
               element={
                 <AuthGuard>
-                  <ExperiencePage type="tarot" />
+                  <TarotPage />
                 </AuthGuard>
               }
             />
