@@ -356,6 +356,9 @@ The workflow `.github/workflows/deploy.yml` runs on pushes to `main` and can
 also be started manually. Configure these GitHub repository values before
 using it:
 
+- GitHub Environment `dev`: the deploy job runs in this environment so OIDC
+  trust policies scoped to `repo:neria-rafapenya/ai-assistant:environment:dev`
+  can assume the AWS role.
 - Secret `AWS_DEPLOY_ROLE_ARN`: IAM role trusted by GitHub Actions through
   OIDC, with permissions for ECR push, ECS deployment, S3 frontend upload and
   CloudFront invalidation.
