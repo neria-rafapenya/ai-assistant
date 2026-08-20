@@ -84,6 +84,21 @@ FastAPI backend. The current implementation includes:
   Cognito app client.
 - Integrated OIDC login/logout in React and protected the Tarot, Sueños and
   Historial routes while keeping `/dev` available for technical testing.
+- Added backend validation for Cognito access tokens and user identification
+  through the immutable `sub` claim.
+- Updated frontend API calls to send the authenticated bearer token.
+- Added the authenticated profile API and a three-step profile wizard at
+  `/perfil`.
+- Added profile fields for date of birth, profession, goals, interests,
+  response style and topics to avoid. Age and zodiac sign are derived by the
+  backend.
+- Added optional health information with explicit consent validation. Health
+  information is not stored unless the user gives consent.
+- Added SQLite and DynamoDB profile repositories. The development DynamoDB
+  table is `ai-assistant-profiles-dev` with `user_id` as its partition key.
+- Configured ECS CORS for both the CloudFront and localhost origins.
+- Updated CD to deploy the API through ECS Express Mode using the commit SHA
+  image tag.
 
 ## Current status
 
@@ -98,6 +113,8 @@ FastAPI backend. The current implementation includes:
   CloudFront distribution.
 - ECS runtime access is configured through `ecsTaskExecutionRole` for S3,
   Bedrock, OpenSearch Serverless and DynamoDB.
+- The API profile endpoint is deployed and the profile table is active in
+  DynamoDB.
 - The public frontend URL is `https://d38nzp4j8k9sdf.cloudfront.net`.
 - The public backend URL is
   `https://ai-5428103d948647f2ac9aa11b2ba6f07a.ecs.eu-west-1.on.aws`.
@@ -123,9 +140,14 @@ FastAPI backend. The current implementation includes:
 
 ### Security and application features
 
-- Validate Cognito JWTs in the backend and authorize API requests per user.
-- Isolate documents, conversations and indexes by user or tenant.
-- Add request validation, rate limiting and production CORS configuration.
+- Associate conversations, documents and vector-index records with the
+  authenticated Cognito `sub` and enforce per-user access.
+- Load the authenticated user's profile into the prompt context for relevant
+  chat and tarot interactions.
+- Add profile deletion, consent revocation, retention and audit controls.
+- Review the legal basis, privacy notice and data-protection requirements for
+  optional health information before enabling production use.
+- Add request validation, rate limiting and production security monitoring.
 - Implement the tarot-reading and dream-interpretation domain workflows.
 
 ### Operations and cost control
@@ -371,8 +393,9 @@ using it:
   access keys are stored in GitHub.
 
 The workflow builds React with the public ECS API URL, publishes the API
-image, forces an ECS deployment, uploads `frontend/dist/` to S3 and invalidates
-CloudFront. The ECS `FRONTEND_ORIGIN` configuration must allow both the
+image, updates the ECS Express Mode service with the commit SHA image tag,
+uploads `frontend/dist/` to S3 and invalidates CloudFront. The ECS
+`FRONTEND_ORIGIN` configuration must allow both the
 deployed frontend and the local development frontend:
 
 ```text
@@ -483,8 +506,11 @@ Configured in `.env` and documented in `.env.example`:
 - `VITE_COGNITO_CLIENT_ID=4086ign9h6tpj0r5o1mhhab74n`
 - `VITE_COGNITO_REDIRECT_URI=http://localhost:5173/`
 - `VITE_COGNITO_LOGOUT_URI=http://localhost:5173/`
+- `COGNITO_ISSUER=https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_5fX8JYeKk`
+- `COGNITO_CLIENT_ID=4086ign9h6tpj0r5o1mhhab74n`
 - `FRONTEND_ORIGIN=http://localhost:5173` (local) or
   `https://d38nzp4j8k9sdf.cloudfront.net,http://localhost:5173` (ECS)
+- `DYNAMODB_PROFILES_TABLE_NAME=ai-assistant-profiles-dev`
 - `AWS_REGION=eu-west-1`
 - `S3_BUCKET_NAME=`
 - `AI_PROVIDER=simulated`
