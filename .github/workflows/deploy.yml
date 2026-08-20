@@ -3,7 +3,8 @@ name: Deploy
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
   id-token: write
@@ -16,9 +17,10 @@ env:
   ECS_SERVICE: ai-assistant-api-dev
   FRONTEND_BUCKET: ai-assistant-frontend-dev-740862652747
   CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+
   VITE_API_BASE_URL: https://ai-5428103d948647f2ac9aa11b2ba6f07a.ecs.eu-west-1.on.aws
   VITE_COGNITO_ISSUER: https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_5fX8JYeKk
-  VITE_COGNITO_CLIENT_ID: 4086ign9h6tpj0r5o1mhhhab74n
+  VITE_COGNITO_CLIENT_ID: 4086ign9h6tpj0r5o1mhhab74n
   VITE_COGNITO_REDIRECT_URI: https://d38nzp4j8k9sdf.cloudfront.net/
   VITE_COGNITO_LOGOUT_URI: https://d38nzp4j8k9sdf.cloudfront.net/
 
@@ -26,6 +28,11 @@ jobs:
   deploy:
     name: Deploy API and frontend
     runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -77,7 +84,10 @@ jobs:
           npm run build
 
       - name: Publish frontend to S3
-        run: aws s3 sync frontend/dist/ "s3://$FRONTEND_BUCKET/"
+        run: |
+          aws s3 sync frontend/dist/ \
+            "s3://$FRONTEND_BUCKET/" \
+            --delete
 
       - name: Invalidate CloudFront
         if: env.CLOUDFRONT_DISTRIBUTION_ID != ''
