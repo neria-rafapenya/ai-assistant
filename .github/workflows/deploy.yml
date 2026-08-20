@@ -12,6 +12,7 @@ permissions:
 
 env:
   AWS_REGION: eu-west-1
+  AWS_DEPLOY_ROLE_ARN: arn:aws:iam::740862652747:role/github-actions-deploy-role
   ECR_REPOSITORY: ai-assistant-api
   ECS_CLUSTER: default
   ECS_SERVICE: ai-assistant-api-dev
@@ -42,11 +43,15 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: arn:aws:iam::740862652747:role/github-actions-deploy-role
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: github-actions-deploy
 
       - name: Login to Amazon ECR
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Build and push API image
         env:
