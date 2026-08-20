@@ -1,0 +1,18 @@
+name: Debug GitHub OIDC
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  inspect-oidc:
+    name: Inspect OIDC claims
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Print OIDC claims
+        uses: github/actions-oidc-debugger@main
