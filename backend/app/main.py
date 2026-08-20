@@ -23,6 +23,11 @@ from app.profile_repository import DynamoDBProfileRepository, SQLiteProfileRepos
 from app.rag_service import RAGService
 from app.settings import settings
 from app.tarot import MAJOR_ARCANA, build_tarot_prompt
+from app.tarot_repository import (
+    DynamoDBTarotReadingRepository,
+    SQLiteTarotReadingRepository,
+    create_reading_record,
+)
 from app.vector_store import create_vector_store
 
 
@@ -158,10 +163,21 @@ class TarotReadRequest(BaseModel):
 
 
 class TarotReadResponse(BaseModel):
+    reading_id: str
+    created_at: datetime
     reading: str
     provider: str
     spread: str
     cards: list[TarotCardRequest]
+
+
+class TarotReadingItem(TarotReadResponse):
+    question: str
+    style: str
+
+
+class TarotReadingsResponse(BaseModel):
+    readings: list[TarotReadingItem]
 
 
 app = FastAPI(
@@ -227,6 +243,14 @@ if settings.persistence_backend == "dynamodb":
     )
 else:
     profile_repository = SQLiteProfileRepository(settings.chat_database_path)
+
+if settings.persistence_backend == "dynamodb":
+    tarot_reading_repository = DynamoDBTarotReadingRepository(
+        settings.dynamodb_tarot_readings_table_name,
+        settings.aws_region,
+    )
+else:
+    tarot_reading_repository = SQLiteTarotReadingRepository(settings.chat_database_path)
 
 s3_client = boto3.client(
     "s3",
@@ -386,12 +410,41 @@ def tarot_read(
         logger.exception("Could not generate tarot reading")
         raise HTTPException(status_code=502, detail=f"Provider error: {exc}") from exc
 
+    record = create_reading_record(
+        question=payload.question.strip(),
+        spread=payload.spread,
+        style=payload.style,
+        cards=[card.model_dump() for card in payload.cards],
+        reading=result.reply,
+        provider=result.provider,
+    )
+    try:
+        tarot_reading_repository.save(current_user.sub, record)
+    except Exception as exc:
+        logger.exception("Could not persist tarot reading")
+        raise HTTPException(status_code=502, detail="Could not save tarot reading") from exc
+
     return TarotReadResponse(
+        reading_id=record["reading_id"],
+        created_at=record["created_at"],
         reading=result.reply,
         provider=result.provider,
         spread=payload.spread,
         cards=payload.cards,
     )
+
+
+@app.get("/api/v1/tarot/readings", response_model=TarotReadingsResponse, tags=["Tarot"])
+def list_tarot_readings(
+    limit: int = Query(default=20, ge=1, le=50),
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> TarotReadingsResponse:
+    try:
+        readings = tarot_reading_repository.list_for_user(current_user.sub, limit)
+    except Exception as exc:
+        logger.exception("Could not list tarot readings")
+        raise HTTPException(status_code=502, detail="Could not load tarot readings") from exc
+    return TarotReadingsResponse(readings=readings)
 
 
 @app.post(

@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     dynamodb_documents_table_name: str = "ai-assistant-documents-dev"
     dynamodb_conversations_table_name: str = "ai-assistant-conversations-dev"
     dynamodb_profiles_table_name: str = "ai-assistant-profiles-dev"
+    dynamodb_tarot_readings_table_name: str = "ai-assistant-tarot-readings-dev"
     local_index_path: Path = ROOT_DIR / "backend" / "data" / "vector_index.json"
     chat_database_path: Path = ROOT_DIR / "backend" / "data" / "chat.db"
 

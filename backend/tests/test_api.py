@@ -103,6 +103,25 @@ def test_tarot_read_rejects_wrong_spread_size() -> None:
     assert response.status_code == 422
 
 
+def test_tarot_readings_are_listed_for_authenticated_user(monkeypatch) -> None:
+    client = TestClient(app)
+    repository = type(
+        "InMemoryReadings",
+        (),
+        {
+            "items": [],
+            "save": lambda self, user_id, reading: self.items.append(reading),
+            "list_for_user": lambda self, user_id, limit: self.items[:limit],
+        },
+    )()
+    monkeypatch.setattr("app.main.tarot_reading_repository", repository)
+
+    response = client.get("/api/v1/tarot/readings")
+
+    assert response.status_code == 200
+    assert response.json() == {"readings": []}
+
+
 def test_chat_ok(monkeypatch) -> None:
     client = TestClient(app)
 
