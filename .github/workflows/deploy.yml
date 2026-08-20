@@ -16,6 +16,7 @@ env:
   ECR_REPOSITORY: ai-assistant-api
   ECS_CLUSTER: default
   ECS_SERVICE: ai-assistant-api-dev
+  ECS_SERVICE_ARN: arn:aws:ecs:eu-west-1:740862652747:service/default/ai-assistant-api-dev
   FRONTEND_BUCKET: ai-assistant-frontend-dev-740862652747
   CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
 
@@ -69,11 +70,20 @@ jobs:
             backend
 
       - name: Deploy API service
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          aws ecs update-service \
-            --cluster "$ECS_CLUSTER" \
-            --service "$ECS_SERVICE" \
-            --force-new-deployment
+          IMAGE_DIGEST=$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$IMAGE_TAG" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)
+
+          aws ecs update-express-gateway-service \
+            --service-arn "$ECS_SERVICE_ARN" \
+            --primary-container \
+              "image=$REGISTRY/$ECR_REPOSITORY@$IMAGE_DIGEST"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
