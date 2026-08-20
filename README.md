@@ -554,7 +554,7 @@ Configured in `.env` and documented in `.env.example`:
 - `OPENSEARCH_INDEX=ai-assistant-documents`
 - `OPENSEARCH_SERVICE=aoss`
 - `BEDROCK_MODEL_ID=eu.amazon.nova-lite-v1:0`
-- `BEDROCK_MAX_TOKENS=128`
+- `BEDROCK_MAX_TOKENS=384` (límite de salida para evitar lecturas cortadas)
 - `DAILY_TAROT_LIMIT=5`
 - `DAILY_CHAT_LIMIT=20`
 - `SANDBOX_USER_EMAILS=` (optional, development-only allowlist)

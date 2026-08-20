@@ -30,6 +30,7 @@ env:
   DAILY_TAROT_LIMIT: "5"
   DAILY_CHAT_LIMIT: "20"
   SANDBOX_USER_EMAILS: rafa@rafapenya.com
+  BEDROCK_MAX_TOKENS: "384"
 
 jobs:
   deploy:
@@ -89,16 +90,19 @@ jobs:
             --arg tarot_limit "$DAILY_TAROT_LIMIT" \
             --arg chat_limit "$DAILY_CHAT_LIMIT" \
             --arg sandbox_emails "$SANDBOX_USER_EMAILS" \
+            --arg max_tokens "$BEDROCK_MAX_TOKENS" \
             '.image = $image |
              .environment = ((.environment // []) |
                map(select(.name != "DYNAMODB_USAGE_TABLE_NAME" and
                           .name != "DAILY_TAROT_LIMIT" and
                           .name != "DAILY_CHAT_LIMIT" and
-                          .name != "SANDBOX_USER_EMAILS")) +
+                          .name != "SANDBOX_USER_EMAILS" and
+                          .name != "BEDROCK_MAX_TOKENS")) +
                [{name: "DYNAMODB_USAGE_TABLE_NAME", value: $usage_table},
                 {name: "DAILY_TAROT_LIMIT", value: $tarot_limit},
                 {name: "DAILY_CHAT_LIMIT", value: $chat_limit},
-                {name: "SANDBOX_USER_EMAILS", value: $sandbox_emails}])')
+                {name: "SANDBOX_USER_EMAILS", value: $sandbox_emails},
+                {name: "BEDROCK_MAX_TOKENS", value: $max_tokens}])')
           aws ecs update-express-gateway-service \
             --service-arn "$ECS_SERVICE_ARN" \
             --primary-container "$PRIMARY_CONTAINER"
