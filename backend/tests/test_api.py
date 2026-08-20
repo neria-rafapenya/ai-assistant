@@ -59,7 +59,7 @@ def test_profile_requires_explicit_health_consent(monkeypatch) -> None:
     assert response.json()["age"] is not None
 
 
-def test_tarot_read_builds_guided_interpretation(monkeypatch) -> None:
+def test_tarot_read_builds_general_interpretation(monkeypatch) -> None:
     client = TestClient(app)
     captured = {}
 
@@ -85,7 +85,8 @@ def test_tarot_read_builds_guided_interpretation(monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["provider"] == "simulated"
-    assert "Cómo se relacionan" in captured["prompt"]
+    assert "Devuelve únicamente la lectura general" in captured["prompt"]
+    assert "Interpretación de cada carta" not in captured["prompt"]
 
 
 def test_tarot_read_rejects_wrong_spread_size() -> None:

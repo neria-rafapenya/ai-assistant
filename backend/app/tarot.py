@@ -54,13 +54,11 @@ Reglas:
 - Relaciona las cartas entre sí y con la pregunta, no te limites a enumerar significados.
 - Usa un tono {style}, cercano y respetuoso.
 - Escribe en español.
-
-Devuelve exactamente estas secciones con títulos claros:
-1. Lectura general
-2. Interpretación de cada carta
-3. Cómo se relacionan
-4. Pregunta para reflexionar
-5. Próximo paso sugerido
+- Devuelve únicamente la lectura general, en 2 o 3 párrafos breves.
+- Integra de forma natural el significado de todas las cartas y sus posiciones.
+- No hagas una interpretación separada de cada carta.
+- No incluyas títulos, listas, numeración, preguntas adicionales ni próximos pasos.
+- No repitas la pregunta ni describas las instrucciones recibidas.
 
 Perfil no sensible del usuario:
 {profile_context}
