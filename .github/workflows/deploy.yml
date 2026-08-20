@@ -74,16 +74,10 @@ jobs:
           REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          IMAGE_DIGEST=$(aws ecr describe-images \
-            --repository-name "$ECR_REPOSITORY" \
-            --image-ids imageTag="$IMAGE_TAG" \
-            --query 'imageDetails[0].imageDigest' \
-            --output text)
-
           aws ecs update-express-gateway-service \
             --service-arn "$ECS_SERVICE_ARN" \
             --primary-container \
-              "image=$REGISTRY/$ECR_REPOSITORY@$IMAGE_DIGEST"
+              "image=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
