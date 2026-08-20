@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import {
   BrowserRouter,
   NavLink,
@@ -56,6 +56,144 @@ type SearchResponse = {
   query: string;
   results: SearchResult[];
 };
+
+type UserProfile = {
+  date_of_birth: string | null;
+  profession: string | null;
+  goals: string[];
+  interests: string[];
+  response_style: string | null;
+  topics_to_avoid: string[];
+  health_conditions: string | null;
+  health_data_consent: boolean;
+  age: number | null;
+  zodiac_sign: string | null;
+  onboarding_completed: boolean;
+};
+
+const splitList = (value: string) =>
+  value.split(",").map((item) => item.trim()).filter(Boolean);
+
+function ProfilePage() {
+  const auth = useAuth();
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+  const [step, setStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [profile, setProfile] = useState({
+    date_of_birth: "",
+    profession: "",
+    goals: "",
+    interests: "",
+    response_style: "reflexivo",
+    topics_to_avoid: "",
+    health_conditions: "",
+    health_data_consent: false,
+  });
+
+  const headers = () => ({
+    "content-type": "application/json",
+    Authorization: `Bearer ${auth.user?.access_token ?? ""}`,
+  });
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/v1/profile`, {
+          headers: { Authorization: `Bearer ${auth.user?.access_token ?? ""}` },
+        });
+        if (!response.ok) throw new Error(`No se pudo cargar el perfil (${response.status})`);
+        const data: UserProfile = await response.json();
+        setProfile({
+          date_of_birth: data.date_of_birth ?? "",
+          profession: data.profession ?? "",
+          goals: data.goals.join(", "),
+          interests: data.interests.join(", "),
+          response_style: data.response_style ?? "reflexivo",
+          topics_to_avoid: data.topics_to_avoid.join(", "),
+          health_conditions: data.health_conditions ?? "",
+          health_data_consent: data.health_data_consent,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "No se pudo cargar el perfil");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    void loadProfile();
+  }, [apiBaseUrl, auth.user?.access_token]);
+
+  const saveProfile = async () => {
+    setIsSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/profile`, {
+        method: "PUT",
+        headers: headers(),
+        body: JSON.stringify({
+          ...profile,
+          date_of_birth: profile.date_of_birth || null,
+          profession: profile.profession || null,
+          goals: splitList(profile.goals),
+          interests: splitList(profile.interests),
+          topics_to_avoid: splitList(profile.topics_to_avoid),
+          health_conditions: profile.health_conditions || null,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail ?? `No se pudo guardar (${response.status})`);
+      setMessage("Perfil guardado correctamente.");
+      setStep(1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar el perfil");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) return <p className="auth-message">Cargando perfil...</p>;
+
+  return (
+    <section className="product-page">
+      <p className="eyebrow">Tu perfil</p>
+      <h1>Cuéntanos un poco sobre ti</h1>
+      <p className="lead">Esta información nos ayudará a personalizar tus experiencias.</p>
+      <div className="panel">
+        <p>Paso {step} de 3</p>
+        {step === 1 ? (
+          <>
+            <label>Fecha de nacimiento<input type="date" value={profile.date_of_birth} onChange={(event) => setProfile({ ...profile, date_of_birth: event.target.value })} /></label>
+            <label>Profesión<input value={profile.profession} onChange={(event) => setProfile({ ...profile, profession: event.target.value })} placeholder="Ej.: diseñadora, profesor, estudiante" /></label>
+          </>
+        ) : null}
+        {step === 2 ? (
+          <>
+            <label>Objetivos, separados por comas<input value={profile.goals} onChange={(event) => setProfile({ ...profile, goals: event.target.value })} placeholder="crecimiento personal, trabajo" /></label>
+            <label>Intereses, separados por comas<input value={profile.interests} onChange={(event) => setProfile({ ...profile, interests: event.target.value })} placeholder="tarot, proyectos, relaciones" /></label>
+            <label>Preferencia de respuesta<select value={profile.response_style} onChange={(event) => setProfile({ ...profile, response_style: event.target.value })}><option value="breve">Breve y directa</option><option value="reflexivo">Reflexiva</option><option value="detallado">Detallada</option><option value="practico">Con recomendaciones prácticas</option></select></label>
+            <label>Temas que prefieres evitar, separados por comas<input value={profile.topics_to_avoid} onChange={(event) => setProfile({ ...profile, topics_to_avoid: event.target.value })} /></label>
+          </>
+        ) : null}
+        {step === 3 ? (
+          <>
+            <p>La información de salud es opcional y se tratará por separado. No se utilizará para diagnósticos ni predicciones médicas.</p>
+            <label className="checkbox-label"><input type="checkbox" checked={profile.health_data_consent} onChange={(event) => setProfile({ ...profile, health_data_consent: event.target.checked })} /> Acepto explícitamente que esta información se almacene para personalizar la experiencia.</label>
+            <label>Información de salud opcional<textarea value={profile.health_conditions} disabled={!profile.health_data_consent} onChange={(event) => setProfile({ ...profile, health_conditions: event.target.value })} placeholder="Puedes dejarlo vacío" /></label>
+          </>
+        ) : null}
+        {error ? <p className="error">{error}</p> : null}
+        {message ? <p className="success">{message}</p> : null}
+        <div className="row">
+          {step > 1 ? <button type="button" className="action" onClick={() => setStep(step - 1)}>Anterior</button> : null}
+          {step < 3 ? <button type="button" className="action" onClick={() => setStep(step + 1)}>Continuar</button> : <button type="button" className="action" onClick={() => void saveProfile()} disabled={isSaving}>{isSaving ? "Guardando..." : "Guardar perfil"}</button>}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function DevPage() {
   const auth = useAuth();
@@ -561,6 +699,7 @@ function App() {
             <NavLink to="/tarot">Tarot</NavLink>
             <NavLink to="/suenos">Sueños</NavLink>
             <NavLink to="/historial">Historial</NavLink>
+            {auth.isAuthenticated ? <NavLink to="/perfil">Mi perfil</NavLink> : null}
           </nav>
           <nav className="secondary-nav" aria-label="Navegación secundaria">
             <NavLink to="/dev">Desarrollo</NavLink>
@@ -602,6 +741,7 @@ function App() {
                 </AuthGuard>
               }
             />
+            <Route path="/perfil" element={<AuthGuard><ProfilePage /></AuthGuard>} />
             <Route path="/dev" element={<DevPage />} />
           </Routes>
         </main>

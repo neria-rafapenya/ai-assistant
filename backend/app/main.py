@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, timezone
 import json
 import logging
 from pathlib import PurePath
@@ -19,6 +19,7 @@ from app.ingestion import extract_chunks
 from app.orchestrator import Orchestrator
 from app.prompt_builder import PromptBuilder
 from app.providers import BedrockChatProvider, ProviderManager, SimulatedChatProvider
+from app.profile_repository import DynamoDBProfileRepository, SQLiteProfileRepository
 from app.rag_service import RAGService
 from app.settings import settings
 from app.vector_store import create_vector_store
@@ -123,6 +124,25 @@ class SearchResponse(BaseModel):
     results: list[SearchResult]
 
 
+class UserProfileRequest(BaseModel):
+    date_of_birth: date | None = None
+    profession: str | None = Field(default=None, max_length=200)
+    goals: list[str] = Field(default_factory=list, max_length=10)
+    interests: list[str] = Field(default_factory=list, max_length=20)
+    response_style: str | None = Field(default=None, max_length=50)
+    topics_to_avoid: list[str] = Field(default_factory=list, max_length=20)
+    health_conditions: str | None = Field(default=None, max_length=2000)
+    health_data_consent: bool = False
+
+
+class UserProfileResponse(UserProfileRequest):
+    user_id: str
+    age: int | None = None
+    zodiac_sign: str | None = None
+    health_data_consent_at: datetime | None = None
+    onboarding_completed: bool
+
+
 app = FastAPI(
     title="AI Assistant Backend",
     version="0.1.0",
@@ -179,6 +199,14 @@ elif settings.persistence_backend == "sqlite":
 else:
     raise ValueError(f"Unknown persistence backend: {settings.persistence_backend}")
 
+if settings.persistence_backend == "dynamodb":
+    profile_repository = DynamoDBProfileRepository(
+        settings.dynamodb_profiles_table_name,
+        settings.aws_region,
+    )
+else:
+    profile_repository = SQLiteProfileRepository(settings.chat_database_path)
+
 s3_client = boto3.client(
     "s3",
     region_name=settings.aws_region,
@@ -219,6 +247,86 @@ def health() -> HealthResponse:
         status="ok",
         aws_region=settings.aws_region,
     )
+
+
+def calculate_age(date_of_birth: date | None) -> int | None:
+    if date_of_birth is None:
+        return None
+    today = date.today()
+    return today.year - date_of_birth.year - (
+        (today.month, today.day) < (date_of_birth.month, date_of_birth.day)
+    )
+
+
+def calculate_zodiac_sign(date_of_birth: date | None) -> str | None:
+    if date_of_birth is None:
+        return None
+    month_day = (date_of_birth.month, date_of_birth.day)
+    boundaries = [
+        ((1, 20), "Acuario"), ((2, 19), "Piscis"), ((3, 21), "Aries"),
+        ((4, 20), "Tauro"), ((5, 21), "Géminis"), ((6, 21), "Cáncer"),
+        ((7, 23), "Leo"), ((8, 23), "Virgo"), ((9, 23), "Libra"),
+        ((10, 23), "Escorpio"), ((11, 22), "Sagitario"), ((12, 22), "Capricornio"),
+    ]
+    for boundary, sign in reversed(boundaries):
+        if month_day >= boundary:
+            return sign
+    return "Capricornio"
+
+
+def serialize_profile(user_id: str, profile: dict) -> UserProfileResponse:
+    date_of_birth = (
+        date.fromisoformat(profile["date_of_birth"])
+        if profile.get("date_of_birth")
+        else None
+    )
+    return UserProfileResponse(
+        user_id=user_id,
+        date_of_birth=date_of_birth,
+        profession=profile.get("profession"),
+        goals=profile.get("goals", []),
+        interests=profile.get("interests", []),
+        response_style=profile.get("response_style"),
+        topics_to_avoid=profile.get("topics_to_avoid", []),
+        health_conditions=profile.get("health_conditions"),
+        health_data_consent=profile.get("health_data_consent", False),
+        health_data_consent_at=profile.get("health_data_consent_at"),
+        age=calculate_age(date_of_birth),
+        zodiac_sign=calculate_zodiac_sign(date_of_birth),
+        onboarding_completed=bool(profile.get("date_of_birth") and profile.get("profession")),
+    )
+
+
+@app.get("/api/v1/profile", response_model=UserProfileResponse, tags=["Profile"])
+def get_profile(current_user: AuthenticatedUser = Depends(get_current_user)) -> UserProfileResponse:
+    profile = profile_repository.get(current_user.sub) or {}
+    return serialize_profile(current_user.sub, profile)
+
+
+@app.put("/api/v1/profile", response_model=UserProfileResponse, tags=["Profile"])
+def save_profile(
+    payload: UserProfileRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> UserProfileResponse:
+    if payload.health_conditions and not payload.health_data_consent:
+        raise HTTPException(
+            status_code=422,
+            detail="Explicit consent is required to store health information",
+        )
+
+    profile = payload.model_dump(mode="json")
+    existing = profile_repository.get(current_user.sub) or {}
+    if payload.health_data_consent:
+        profile["health_data_consent_at"] = existing.get(
+            "health_data_consent_at",
+            datetime.now(timezone.utc).isoformat(),
+        )
+    else:
+        profile["health_conditions"] = None
+        profile["health_data_consent_at"] = None
+
+    profile_repository.save(current_user.sub, profile)
+    return serialize_profile(current_user.sub, profile)
 
 
 @app.post(

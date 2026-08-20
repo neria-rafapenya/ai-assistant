@@ -22,6 +22,43 @@ def test_chat_requires_authentication() -> None:
     assert response.status_code == 401
 
 
+def test_profile_requires_explicit_health_consent(monkeypatch) -> None:
+    class InMemoryProfiles:
+        def __init__(self):
+            self.items = {}
+
+        def get(self, user_id):
+            return self.items.get(user_id)
+
+        def save(self, user_id, profile):
+            self.items[user_id] = profile
+            return profile
+
+    repository = InMemoryProfiles()
+    monkeypatch.setattr("app.main.profile_repository", repository)
+    client = TestClient(app)
+
+    response = client.put(
+        "/api/v1/profile",
+        json={"health_conditions": "dato sensible"},
+    )
+    assert response.status_code == 422
+
+    response = client.put(
+        "/api/v1/profile",
+        json={
+            "date_of_birth": "1990-04-15",
+            "profession": "Diseñador",
+            "goals": ["crecimiento personal"],
+            "health_conditions": "dato sensible",
+            "health_data_consent": True,
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["zodiac_sign"] == "Aries"
+    assert response.json()["age"] is not None
+
+
 def test_chat_ok(monkeypatch) -> None:
     client = TestClient(app)
 
