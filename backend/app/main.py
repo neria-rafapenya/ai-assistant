@@ -22,6 +22,7 @@ from app.providers import BedrockChatProvider, ProviderManager, SimulatedChatPro
 from app.profile_repository import DynamoDBProfileRepository, SQLiteProfileRepository
 from app.rag_service import RAGService
 from app.settings import settings
+from app.tarot import MAJOR_ARCANA, build_tarot_prompt
 from app.vector_store import create_vector_store
 
 
@@ -141,6 +142,26 @@ class UserProfileResponse(UserProfileRequest):
     zodiac_sign: str | None = None
     health_data_consent_at: datetime | None = None
     onboarding_completed: bool
+
+
+class TarotCardRequest(BaseModel):
+    position: str = Field(min_length=1, max_length=50)
+    name: str = Field(min_length=1, max_length=80)
+
+
+class TarotReadRequest(BaseModel):
+    question: str = Field(min_length=5, max_length=4000)
+    spread: str = Field(pattern="^(one|three)$")
+    style: str = Field(default="reflexivo", max_length=50)
+    cards: list[TarotCardRequest] = Field(min_length=1, max_length=3)
+    provider: str | None = None
+
+
+class TarotReadResponse(BaseModel):
+    reading: str
+    provider: str
+    spread: str
+    cards: list[TarotCardRequest]
 
 
 app = FastAPI(
@@ -327,6 +348,50 @@ def save_profile(
 
     profile_repository.save(current_user.sub, profile)
     return serialize_profile(current_user.sub, profile)
+
+
+@app.post("/api/v1/tarot/read", response_model=TarotReadResponse, tags=["Tarot"])
+def tarot_read(
+    payload: TarotReadRequest,
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> TarotReadResponse:
+    expected_count = 1 if payload.spread == "one" else 3
+    if len(payload.cards) != expected_count:
+        raise HTTPException(
+            status_code=422,
+            detail=f"The {payload.spread} spread requires {expected_count} card(s)",
+        )
+
+    if len({card.name for card in payload.cards}) != len(payload.cards):
+        raise HTTPException(status_code=422, detail="Cards must be unique")
+
+    unknown_cards = [card.name for card in payload.cards if card.name not in MAJOR_ARCANA]
+    if unknown_cards:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown tarot card(s): {', '.join(unknown_cards)}",
+        )
+
+    profile = profile_repository.get(current_user.sub) or {}
+    prompt = build_tarot_prompt(
+        question=payload.question.strip(),
+        spread=payload.spread,
+        cards=[card.model_dump() for card in payload.cards],
+        style=payload.style,
+        profile=profile,
+    )
+    try:
+        result = provider_manager.generate_reply(prompt, provider_name=payload.provider)
+    except Exception as exc:
+        logger.exception("Could not generate tarot reading")
+        raise HTTPException(status_code=502, detail=f"Provider error: {exc}") from exc
+
+    return TarotReadResponse(
+        reading=result.reply,
+        provider=result.provider,
+        spread=payload.spread,
+        cards=payload.cards,
+    )
 
 
 @app.post(

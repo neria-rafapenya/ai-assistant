@@ -338,6 +338,25 @@
   font-size: 0.9rem;
 }
 
+.tarot-reading-status {
+  margin-top: 16px;
+  color: var(--accent);
+}
+
+.tarot-interpretation {
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.tarot-reading-copy {
+  max-width: 760px;
+  margin-top: 20px;
+  color: var(--text-h);
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+
 .coming-soon-card .action {
   justify-self: start;
   margin-top: 8px;

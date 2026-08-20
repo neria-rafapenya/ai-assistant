@@ -647,6 +647,13 @@ type TarotCard = {
   meaning: string;
 };
 
+type TarotReadingResponse = {
+  reading: string;
+  provider: string;
+  spread: TarotSpread;
+  cards: Array<{ position: string; name: string }>;
+};
+
 const tarotCards: TarotCard[] = [
   { id: "00-el-loco", name: "El Loco", image: "00_fool.png", meaning: "Comienzos, libertad y apertura a lo desconocido." },
   { id: "01-el-mago", name: "El Mago", image: "01_magician.png", meaning: "Recursos, iniciativa y capacidad de crear movimiento." },
@@ -721,16 +728,51 @@ function TarotBackView({ position }: { position: string }) {
 }
 
 function TarotPage() {
+  const auth = useAuth();
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
   const [question, setQuestion] = useState("");
   const [spread, setSpread] = useState<TarotSpread>("one");
   const [style, setStyle] = useState("reflexivo");
   const [drawnCards, setDrawnCards] = useState<TarotCard[]>([]);
+  const [reading, setReading] = useState<TarotReadingResponse | null>(null);
+  const [isReading, setIsReading] = useState(false);
+  const [readingError, setReadingError] = useState("");
 
-  const drawCards = (event: React.FormEvent<HTMLFormElement>) => {
+  const drawCards = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const count = spread === "one" ? 1 : 3;
     const shuffled = [...tarotCards].sort(() => Math.random() - 0.5);
-    setDrawnCards(shuffled.slice(0, count));
+    const selectedCards = shuffled.slice(0, count);
+    setDrawnCards(selectedCards);
+    setReading(null);
+    setReadingError("");
+    setIsReading(true);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/tarot/read`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: `Bearer ${auth.user?.access_token ?? ""}`,
+        },
+        body: JSON.stringify({
+          question: question.trim(),
+          spread,
+          style,
+          cards: selectedCards.map((card, index) => ({
+            position: spread === "one" ? "Tu orientación" : ["situación", "perspectiva", "consejo"][index],
+            name: card.name,
+          })),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail ?? `La lectura falló (${response.status})`);
+      setReading(data);
+    } catch (err) {
+      setReadingError(err instanceof Error ? err.message : "No se pudo generar la lectura");
+    } finally {
+      setIsReading(false);
+    }
   };
 
   return (
@@ -763,6 +805,17 @@ function TarotPage() {
             ))}
           </div>
           <p className="tarot-note">Las cartas son una herramienta de reflexión, no una predicción objetiva.</p>
+          {isReading ? <p className="tarot-reading-status">Preparando tu interpretación...</p> : null}
+          {readingError ? <p className="error">{readingError}</p> : null}
+          {reading ? (
+            <div className="tarot-interpretation">
+              <div className="tarot-reading-heading">
+                <div><p className="eyebrow">Interpretación</p><h2>Una perspectiva para ti</h2></div>
+                <span className="tarot-style">Proveedor: {reading.provider}</span>
+              </div>
+              <div className="tarot-reading-copy">{reading.reading}</div>
+            </div>
+          ) : null}
         </section>
       )}
       <form className="tarot-setup" onSubmit={drawCards}>

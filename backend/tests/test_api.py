@@ -59,6 +59,50 @@ def test_profile_requires_explicit_health_consent(monkeypatch) -> None:
     assert response.json()["age"] is not None
 
 
+def test_tarot_read_builds_guided_interpretation(monkeypatch) -> None:
+    client = TestClient(app)
+    captured = {}
+
+    def fake_generate(prompt, provider_name=None):
+        captured["prompt"] = prompt
+        return SimpleNamespace(reply="Lectura general\nUna perspectiva útil.", provider="simulated")
+
+    monkeypatch.setattr("app.main.provider_manager.generate_reply", fake_generate)
+
+    response = client.post(
+        "/api/v1/tarot/read",
+        json={
+            "question": "¿Qué debería tener en cuenta en mi proyecto?",
+            "spread": "three",
+            "style": "reflexivo",
+            "cards": [
+                {"position": "situación", "name": "El Mago"},
+                {"position": "perspectiva", "name": "La Luna"},
+                {"position": "consejo", "name": "La Fuerza"},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["provider"] == "simulated"
+    assert "Cómo se relacionan" in captured["prompt"]
+
+
+def test_tarot_read_rejects_wrong_spread_size() -> None:
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/v1/tarot/read",
+        json={
+            "question": "¿Qué debería observar?",
+            "spread": "three",
+            "cards": [{"position": "situación", "name": "El Mago"}],
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_chat_ok(monkeypatch) -> None:
     client = TestClient(app)
 
