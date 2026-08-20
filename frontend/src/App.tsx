@@ -1,4 +1,10 @@
 import { useMemo, useState, type ChangeEvent } from "react";
+import {
+  BrowserRouter,
+  NavLink,
+  Route,
+  Routes,
+} from "react-router-dom";
 import "./App.css";
 
 type HealthResponse = {
@@ -49,7 +55,7 @@ type SearchResponse = {
   results: SearchResult[];
 };
 
-function App() {
+function DevPage() {
   const [message, setMessage] = useState("");
   const [reply, setReply] = useState("");
   const [provider, setProvider] = useState("");
@@ -453,6 +459,112 @@ function App() {
         {chatError ? <p className="error">{chatError}</p> : null}
       </section>
     </main>
+  );
+}
+
+function HomePage() {
+  return (
+    <section className="product-page">
+      <p className="eyebrow">AI Assistant</p>
+      <h1>Un espacio para escucharte</h1>
+      <p className="lead">
+        Explora una lectura de tarot o encuentra sentido a tus sueños con una
+        experiencia personal y reflexiva.
+      </p>
+      <div className="choice-grid">
+        <NavLink className="choice-card" to="/tarot">
+          <span className="choice-icon">✦</span>
+          <h2>Lectura de tarot</h2>
+          <p>Formula una pregunta y recibe una lectura guiada.</p>
+        </NavLink>
+        <NavLink className="choice-card" to="/suenos">
+          <span className="choice-icon">☾</span>
+          <h2>Interpretar un sueño</h2>
+          <p>Describe lo que has soñado y explora sus posibles significados.</p>
+        </NavLink>
+      </div>
+    </section>
+  );
+}
+
+function ExperiencePage({ type }: { type: "tarot" | "suenos" }) {
+  const isTarot = type === "tarot";
+  return (
+    <section className="product-page experience-page">
+      <p className="eyebrow">{isTarot ? "Tarot" : "Sueños"}</p>
+      <h1>{isTarot ? "Tu lectura comienza aquí" : "Cuéntame tu sueño"}</h1>
+      <p className="lead">
+        {isTarot
+          ? "Escribe tu pregunta con calma. La interpretación será una guía para tu reflexión personal."
+          : "Describe las imágenes, emociones y detalles que recuerdes. Los matices importan."}
+      </p>
+      <div className="coming-soon-card">
+        <span className="choice-icon">{isTarot ? "✦" : "☾"}</span>
+        <h2>Próximamente</h2>
+        <p>
+          Estamos preparando esta experiencia. Mientras tanto, puedes revisar
+          las integraciones actuales desde el área de desarrollo.
+        </p>
+        <NavLink className="action" to="/dev">
+          Abrir herramientas de desarrollo
+        </NavLink>
+      </div>
+    </section>
+  );
+}
+
+function HistoryPage() {
+  return (
+    <section className="product-page">
+      <p className="eyebrow">Tu espacio</p>
+      <h1>Historial</h1>
+      <p className="lead">
+        Aquí aparecerán tus lecturas e interpretaciones guardadas cuando
+        activemos la autenticación.
+      </p>
+      <div className="coming-soon-card">
+        <h2>Disponible próximamente</h2>
+        <p>El historial será privado y estará asociado a tu cuenta.</p>
+      </div>
+    </section>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <div className="app-layout">
+        <aside className="sidebar">
+          <NavLink className="brand" to="/">
+            <span className="brand-mark">✦</span>
+            <span>AI Assistant</span>
+          </NavLink>
+          <nav className="main-nav" aria-label="Navegación principal">
+            <NavLink to="/" end>
+              Inicio
+            </NavLink>
+            <NavLink to="/tarot">Tarot</NavLink>
+            <NavLink to="/suenos">Sueños</NavLink>
+            <NavLink to="/historial">Historial</NavLink>
+          </nav>
+          <nav className="secondary-nav" aria-label="Navegación secundaria">
+            <NavLink to="/dev">Desarrollo</NavLink>
+          </nav>
+        </aside>
+        <main className="content-area">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/tarot" element={<ExperiencePage type="tarot" />} />
+            <Route
+              path="/suenos"
+              element={<ExperiencePage type="suenos" />}
+            />
+            <Route path="/historial" element={<HistoryPage />} />
+            <Route path="/dev" element={<DevPage />} />
+          </Routes>
+        </main>
+      </div>
+    </BrowserRouter>
   );
 }
 
