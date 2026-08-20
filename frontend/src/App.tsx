@@ -738,6 +738,33 @@ function TarotPage() {
       <p className="eyebrow">Tarot</p>
       <h1>Una lectura para escucharte</h1>
       <p className="lead">Elige una pregunta y deja que las cartas te ofrezcan una perspectiva para reflexionar.</p>
+      {drawnCards.length === 0 ? (
+        <section className="tarot-reading tarot-pending">
+          <div className="tarot-reading-heading">
+            <div><p className="eyebrow">Preparación</p><h2>Tu tirada</h2></div>
+            <span className="tarot-style">{spread === "one" ? "1 carta" : "3 cartas"}</span>
+          </div>
+          <div className={`tarot-cards tarot-cards-${spread === "one" ? 1 : 3}`}>
+            {(spread === "one" ? ["Tu orientación"] : ["Situación", "Perspectiva", "Consejo"]).map((position) => (
+              <TarotBackView key={position} position={position} />
+            ))}
+          </div>
+        </section>
+      ) : (
+        <section className="tarot-reading" aria-live="polite">
+          <div className="tarot-reading-heading">
+            <div><p className="eyebrow">Tu lectura</p><h2>{spread === "one" ? "Una carta" : "Tres cartas"}</h2></div>
+            <span className="tarot-style">Estilo: {style}</span>
+          </div>
+          <p className="tarot-question">“{question}”</p>
+          <div className={`tarot-cards tarot-cards-${drawnCards.length}`}>
+            {drawnCards.map((card, index) => (
+              <TarotCardView key={card.id} card={card} position={spread === "one" ? "Tu orientación" : ["Situación", "Perspectiva", "Consejo"][index]} />
+            ))}
+          </div>
+          <p className="tarot-note">Las cartas son una herramienta de reflexión, no una predicción objetiva.</p>
+        </section>
+      )}
       <form className="tarot-setup" onSubmit={drawCards}>
         <label>
           ¿Sobre qué quieres consultar?
@@ -747,12 +774,12 @@ function TarotPage() {
           <legend>Tipo de lectura</legend>
           <div className="tarot-options">
             <label className={spread === "one" ? "selected" : ""}>
-              <input type="radio" name="spread" value="one" checked={spread === "one"} onChange={() => setSpread("one")} />
+              <input type="radio" name="spread" value="one" checked={spread === "one"} onChange={() => { setSpread("one"); setDrawnCards([]); }} />
               <strong>Una carta</strong>
               <span>Una orientación breve para tu pregunta.</span>
             </label>
             <label className={spread === "three" ? "selected" : ""}>
-              <input type="radio" name="spread" value="three" checked={spread === "three"} onChange={() => setSpread("three")} />
+              <input type="radio" name="spread" value="three" checked={spread === "three"} onChange={() => { setSpread("three"); setDrawnCards([]); }} />
               <strong>Tres cartas</strong>
               <span>Situación, perspectiva y consejo.</span>
             </label>
@@ -769,34 +796,6 @@ function TarotPage() {
         </label>
         <button type="submit" className="action tarot-submit">{drawnCards.length ? "Nueva lectura" : "Comenzar lectura"}</button>
       </form>
-      {drawnCards.length === 0 ? (
-        <section className="tarot-reading tarot-pending">
-          <div className="tarot-reading-heading">
-            <div><p className="eyebrow">Preparación</p><h2>Tu tirada</h2></div>
-            <span className="tarot-style">{spread === "one" ? "1 carta" : "3 cartas"}</span>
-          </div>
-          <div className={`tarot-cards tarot-cards-${spread === "one" ? 1 : 3}`}>
-            {(spread === "one" ? ["Tu orientación"] : ["Situación", "Perspectiva", "Consejo"]).map((position) => (
-              <TarotBackView key={position} position={position} />
-            ))}
-          </div>
-        </section>
-      ) : null}
-      {drawnCards.length > 0 ? (
-        <section className="tarot-reading" aria-live="polite">
-          <div className="tarot-reading-heading">
-            <div><p className="eyebrow">Tu lectura</p><h2>{spread === "one" ? "Una carta" : "Tres cartas"}</h2></div>
-            <span className="tarot-style">Estilo: {style}</span>
-          </div>
-          <p className="tarot-question">“{question}”</p>
-          <div className={`tarot-cards tarot-cards-${drawnCards.length}`}>
-            {drawnCards.map((card, index) => (
-              <TarotCardView key={card.id} card={card} position={spread === "one" ? "Tu orientación" : ["Situación", "Perspectiva", "Consejo"][index]} />
-            ))}
-          </div>
-          <p className="tarot-note">Las cartas son una herramienta de reflexión, no una predicción objetiva.</p>
-        </section>
-      ) : null}
     </section>
   );
 }
