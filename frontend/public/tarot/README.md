@@ -1,14 +1,14 @@
 # Tarot card assets
 
 Add the local Rider-Waite-Smith card images to this directory. The Tarot page
-expects WebP files with these names:
+expects PNG files with these names:
 
 ```text
-00-el-loco.webp
-01-el-mago.webp
+00-el-loco.png
+01-el-mago.png
 02-la-sacerdotisa.webp
 ...
-21-el-mundo.webp
+21-el-mundo.png
 ```
 
 The current prototype uses the 22 Major Arcana. If an image is missing, the
