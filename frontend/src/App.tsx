@@ -694,6 +694,32 @@ function TarotCardView({ card, position }: { card: TarotCard; position: string }
   );
 }
 
+function TarotBackView({ position }: { position: string }) {
+  const [imageAvailable, setImageAvailable] = useState(true);
+
+  return (
+    <article className="tarot-card-slot tarot-back-slot">
+      <p className="tarot-card-position">{position}</p>
+      <div className="tarot-card-frame">
+        {imageAvailable ? (
+          <img
+            src="/tarot/card-back.png"
+            alt="Reverso de una carta de tarot"
+            onError={() => setImageAvailable(false)}
+          />
+        ) : (
+          <div className="tarot-card-placeholder">
+            <span>✦</span>
+            <small>card-back.png</small>
+          </div>
+        )}
+      </div>
+      <h3>Carta preparada</h3>
+      <p>La carta se revelará al comenzar la lectura.</p>
+    </article>
+  );
+}
+
 function TarotPage() {
   const [question, setQuestion] = useState("");
   const [spread, setSpread] = useState<TarotSpread>("one");
@@ -743,6 +769,19 @@ function TarotPage() {
         </label>
         <button type="submit" className="action tarot-submit">{drawnCards.length ? "Nueva lectura" : "Comenzar lectura"}</button>
       </form>
+      {drawnCards.length === 0 ? (
+        <section className="tarot-reading tarot-pending">
+          <div className="tarot-reading-heading">
+            <div><p className="eyebrow">Preparación</p><h2>Tu tirada</h2></div>
+            <span className="tarot-style">{spread === "one" ? "1 carta" : "3 cartas"}</span>
+          </div>
+          <div className={`tarot-cards tarot-cards-${spread === "one" ? 1 : 3}`}>
+            {(spread === "one" ? ["Tu orientación"] : ["Situación", "Perspectiva", "Consejo"]).map((position) => (
+              <TarotBackView key={position} position={position} />
+            ))}
+          </div>
+        </section>
+      ) : null}
       {drawnCards.length > 0 ? (
         <section className="tarot-reading" aria-live="polite">
           <div className="tarot-reading-heading">
