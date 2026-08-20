@@ -41,6 +41,26 @@
   gap: 8px;
 }
 
+.logout-button {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text-h);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.logout-button:hover {
+  color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.auth-message {
+  padding: 72px 32px;
+}
+
 .main-nav a,
 .secondary-nav a {
   border-radius: 8px;

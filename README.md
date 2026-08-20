@@ -75,6 +75,12 @@ FastAPI backend. The current implementation includes:
   the default to avoid accidental Bedrock usage.
 - Validated the flow with backend tests, frontend build/lint and controlled
   AWS calls.
+- Created the Cognito User Pool `eu-west-1_5fX8JYeKk` and the public SPA app
+  client `ai-assistant-web`.
+- Configured Cognito managed login for the CloudFront and localhost callback
+  and sign-out URLs with the Authorization Code flow.
+- Integrated OIDC login/logout in React and protected the Tarot, Sueños and
+  Historial routes while keeping `/dev` available for technical testing.
 
 ## Current status
 
@@ -114,7 +120,7 @@ FastAPI backend. The current implementation includes:
 
 ### Security and application features
 
-- Add user authentication and authorization to FastAPI and React.
+- Validate Cognito JWTs in the backend and authorize API requests per user.
 - Isolate documents, conversations and indexes by user or tenant.
 - Add request validation, rate limiting and production CORS configuration.
 - Implement the tarot-reading and dream-interpretation domain workflows.

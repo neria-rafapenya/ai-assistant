@@ -5,6 +5,8 @@ import {
   Route,
   Routes,
 } from "react-router-dom";
+import { useAuth } from "react-oidc-context";
+import { AuthGuard } from "./auth-guard";
 import "./App.css";
 
 type HealthResponse = {
@@ -531,6 +533,8 @@ function HistoryPage() {
 }
 
 function App() {
+  const auth = useAuth();
+
   return (
     <BrowserRouter>
       <div className="app-layout">
@@ -549,17 +553,44 @@ function App() {
           </nav>
           <nav className="secondary-nav" aria-label="Navegación secundaria">
             <NavLink to="/dev">Desarrollo</NavLink>
+            {auth.isAuthenticated ? (
+              <button
+                type="button"
+                className="logout-button"
+                onClick={() => void auth.signoutRedirect()}
+              >
+                Cerrar sesión
+              </button>
+            ) : null}
           </nav>
         </aside>
         <main className="content-area">
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/tarot" element={<ExperiencePage type="tarot" />} />
+            <Route
+              path="/tarot"
+              element={
+                <AuthGuard>
+                  <ExperiencePage type="tarot" />
+                </AuthGuard>
+              }
+            />
             <Route
               path="/suenos"
-              element={<ExperiencePage type="suenos" />}
+              element={
+                <AuthGuard>
+                  <ExperiencePage type="suenos" />
+                </AuthGuard>
+              }
             />
-            <Route path="/historial" element={<HistoryPage />} />
+            <Route
+              path="/historial"
+              element={
+                <AuthGuard>
+                  <HistoryPage />
+                </AuthGuard>
+              }
+            />
             <Route path="/dev" element={<DevPage />} />
           </Routes>
         </main>
