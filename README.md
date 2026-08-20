@@ -104,6 +104,18 @@ FastAPI backend. The current implementation includes:
   invoked and can be bypassed only for explicitly configured sandbox users.
 - Added a DynamoDB usage-counter repository with atomic updates and a
   `GET /api/v1/usage` endpoint for frontend notices.
+- Added the Tarot experience with one-card and three-card spreads, PNG card
+  assets, card backs, guided questions and persisted readings.
+- Added a Tarot prompt focused on one concise general reading, with safety
+  rules against deterministic predictions and medical, legal or financial
+  advice.
+- Added frontend cleanup for Markdown returned by the model so headings,
+  bold markers and list symbols are not shown literally.
+- Increased the Bedrock output limit to 384 tokens to avoid truncated Tarot
+  readings.
+- Added related-reading context: the backend compares a new user's question
+  with up to ten recent readings and includes up to three similar readings in
+  the Tarot prompt without using an additional embedding call.
 
 ## Current status
 
@@ -120,6 +132,8 @@ FastAPI backend. The current implementation includes:
   Bedrock, OpenSearch Serverless and DynamoDB.
 - The API profile endpoint is deployed and the profile table is active in
   DynamoDB.
+- Tarot readings are persisted per authenticated Cognito user in
+  `ai-assistant-tarot-readings-dev` and can be listed through the API.
 - The usage table `ai-assistant-usage-dev` is active in DynamoDB. The ECS task
   role still needs `dynamodb:UpdateItem` on that table before enabling the new
   backend image.
@@ -147,18 +161,20 @@ FastAPI backend. The current implementation includes:
   content.
 - Add citations and clearer source references to assistant responses.
 - Add evaluation queries and relevance metrics for RAG quality.
+- Add semantic similarity for Tarot history using embeddings and a vector
+  index once the lexical matching MVP needs improvement.
 
 ### Security and application features
 
 - Associate conversations, documents and vector-index records with the
   authenticated Cognito `sub` and enforce per-user access.
 - Load the authenticated user's profile into the prompt context for relevant
-  chat and tarot interactions.
+  chat interactions. Tarot already receives the non-sensitive profile context.
 - Add profile deletion, consent revocation, retention and audit controls.
 - Review the legal basis, privacy notice and data-protection requirements for
   optional health information before enabling production use.
 - Add request validation, rate limiting and production security monitoring.
-- Implement the tarot-reading and dream-interpretation domain workflows.
+- Implement the dream-interpretation domain workflow.
 
 ### Operations and cost control
 
@@ -170,8 +186,9 @@ FastAPI backend. The current implementation includes:
 ### Deployment
 
 - Add staging and production CD environments.
-- Validate the first GitHub Actions CD run end to end using the OIDC role,
-  repository secret and CloudFront distribution variable.
+- Complete a successful GitHub Actions CD run after granting the OIDC role
+  `ecs:DescribeExpressGatewayService`.
+- Verify that the ECS task role has `dynamodb:UpdateItem` on the usage table.
 - Define infrastructure as code.
 - Add backups, retention policies and disaster-recovery procedures.
 
@@ -396,7 +413,9 @@ using it:
   can assume the AWS role.
 - Secret `AWS_DEPLOY_ROLE_ARN`: IAM role trusted by GitHub Actions through
   OIDC, with permissions for ECR push, ECS deployment, S3 frontend upload and
-  CloudFront invalidation.
+  CloudFront invalidation. It also needs `ecs:DescribeExpressGatewayService`
+  on the ECS Express service because the workflow preserves the current
+  container environment while updating the image.
 - Variable `CLOUDFRONT_DISTRIBUTION_ID`: current distribution ID
   `E2B4Q04OL4DTCN`.
 - The secret contains only the ARN of `github-actions-deploy-role`; no AWS
@@ -436,8 +455,8 @@ Add this statement to the existing policy attached to `ecsTaskExecutionRole`
 The deploy workflow preserves the current ECS environment and adds the usage
 configuration automatically: `DAILY_TAROT_LIMIT=5`, `DAILY_CHAT_LIMIT=20`,
 `DYNAMODB_USAGE_TABLE_NAME=ai-assistant-usage-dev` and the configured sandbox
-email. The sandbox email is for development only and must be removed before
-production.
+email. It also sets `BEDROCK_MAX_TOKENS=384`. The sandbox email is for
+development only and must be removed before production.
 
 The S3 document bucket must also allow this CloudFront origin for browser
 uploads using presigned URLs. S3 accepts `PUT`, `GET` and `HEAD` in
