@@ -92,6 +92,13 @@ type UserProfile = {
 const splitList = (value: string) =>
   value.split(",").map((item) => item.trim()).filter(Boolean);
 
+const cleanTarotReading = (value: string) =>
+  value
+    .replace(/^\s*#{1,6}\s*/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/^\s*[-*]\s+/gm, "")
+    .trim();
+
 function ProfilePage() {
   const auth = useAuth();
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -862,7 +869,12 @@ function TarotPage() {
                 <div><p className="eyebrow">Interpretación</p><h2>Una perspectiva para ti</h2></div>
                 <span className="tarot-style">Proveedor: {reading.provider}</span>
               </div>
-              <div className="tarot-reading-copy">{reading.reading}</div>
+              <div className="tarot-reading-copy">
+                {cleanTarotReading(reading.reading)
+                  .split(/\n{2,}/)
+                  .filter(Boolean)
+                  .map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 12)}`}>{paragraph}</p>)}
+              </div>
             </div>
           ) : null}
         </section>

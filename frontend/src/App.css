@@ -367,6 +367,14 @@
   line-height: 1.7;
 }
 
+.tarot-reading-copy p {
+  margin: 0 0 1rem;
+}
+
+.tarot-reading-copy p:last-child {
+  margin-bottom: 0;
+}
+
 .coming-soon-card .action {
   justify-self: start;
   margin-top: 8px;
