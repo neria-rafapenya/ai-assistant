@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     dynamodb_conversations_table_name: str = "ai-assistant-conversations-dev"
     dynamodb_profiles_table_name: str = "ai-assistant-profiles-dev"
     dynamodb_tarot_readings_table_name: str = "ai-assistant-tarot-readings-dev"
+    dynamodb_usage_table_name: str = "ai-assistant-usage-dev"
+    daily_tarot_limit: int = 5
+    daily_chat_limit: int = 20
+    sandbox_user_emails: str = ""
+    sandbox_user_ids: str = ""
     local_index_path: Path = ROOT_DIR / "backend" / "data" / "vector_index.json"
     chat_database_path: Path = ROOT_DIR / "backend" / "data" / "chat.db"
 

@@ -26,6 +26,11 @@ env:
   VITE_COGNITO_REDIRECT_URI: https://d38nzp4j8k9sdf.cloudfront.net/
   VITE_COGNITO_LOGOUT_URI: https://d38nzp4j8k9sdf.cloudfront.net/
 
+  DYNAMODB_USAGE_TABLE_NAME: ai-assistant-usage-dev
+  DAILY_TAROT_LIMIT: "5"
+  DAILY_CHAT_LIMIT: "20"
+  SANDBOX_USER_EMAILS: rafa@rafapenya.com
+
 jobs:
   deploy:
     name: Deploy API and frontend
@@ -74,10 +79,29 @@ jobs:
           REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          PRIMARY_CONTAINER=$(aws ecs describe-express-gateway-service \
+            --service-arn "$ECS_SERVICE_ARN" \
+            --query 'service.activeConfigurations[0].primaryContainer' \
+            --output json)
+          PRIMARY_CONTAINER=$(echo "$PRIMARY_CONTAINER" | jq \
+            --arg image "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            --arg usage_table "$DYNAMODB_USAGE_TABLE_NAME" \
+            --arg tarot_limit "$DAILY_TAROT_LIMIT" \
+            --arg chat_limit "$DAILY_CHAT_LIMIT" \
+            --arg sandbox_emails "$SANDBOX_USER_EMAILS" \
+            '.image = $image |
+             .environment = ((.environment // []) |
+               map(select(.name != "DYNAMODB_USAGE_TABLE_NAME" and
+                          .name != "DAILY_TAROT_LIMIT" and
+                          .name != "DAILY_CHAT_LIMIT" and
+                          .name != "SANDBOX_USER_EMAILS")) +
+               [{name: "DYNAMODB_USAGE_TABLE_NAME", value: $usage_table},
+                {name: "DAILY_TAROT_LIMIT", value: $tarot_limit},
+                {name: "DAILY_CHAT_LIMIT", value: $chat_limit},
+                {name: "SANDBOX_USER_EMAILS", value: $sandbox_emails}])')
           aws ecs update-express-gateway-service \
             --service-arn "$ECS_SERVICE_ARN" \
-            --primary-container \
-              "image=$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+            --primary-container "$PRIMARY_CONTAINER"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

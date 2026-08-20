@@ -99,6 +99,11 @@ FastAPI backend. The current implementation includes:
 - Configured ECS CORS for both the CloudFront and localhost origins.
 - Updated CD to deploy the API through ECS Express Mode using the commit SHA
   image tag.
+- Added authenticated daily usage limits: 5 tarot readings and 20 assistant
+  queries per user. Limits are enforced in the backend before Bedrock is
+  invoked and can be bypassed only for explicitly configured sandbox users.
+- Added a DynamoDB usage-counter repository with atomic updates and a
+  `GET /api/v1/usage` endpoint for frontend notices.
 
 ## Current status
 
@@ -115,6 +120,9 @@ FastAPI backend. The current implementation includes:
   Bedrock, OpenSearch Serverless and DynamoDB.
 - The API profile endpoint is deployed and the profile table is active in
   DynamoDB.
+- The usage table `ai-assistant-usage-dev` is active in DynamoDB. The ECS task
+  role still needs `dynamodb:UpdateItem` on that table before enabling the new
+  backend image.
 - The public frontend URL is `https://d38nzp4j8k9sdf.cloudfront.net`.
 - The public backend URL is
   `https://ai-5428103d948647f2ac9aa11b2ba6f07a.ecs.eu-west-1.on.aws`.
@@ -126,6 +134,8 @@ FastAPI backend. The current implementation includes:
 
 - Add backups, retention and production data-management policies for the
   DynamoDB tables.
+- Add usage dashboards and a product decision for paid plans or monthly
+  quotas.
 - Add explicit retry/backoff observability and operational alerts for
   processing jobs.
 - Add document deletion and re-indexing controls.
@@ -406,6 +416,29 @@ The origins must be written without trailing slashes. After changing an ECS
 environment variable, wait for the new deployment to reach `Running` before
 testing the API from the browser.
 
+The usage table has been created in the development account:
+
+```text
+arn:aws:dynamodb:eu-west-1:740862652747:table/ai-assistant-usage-dev
+```
+
+Add this statement to the existing policy attached to `ecsTaskExecutionRole`
+(the current ECS service uses that role as its task role too):
+
+```json
+{
+  "Effect": "Allow",
+  "Action": "dynamodb:UpdateItem",
+  "Resource": "arn:aws:dynamodb:eu-west-1:740862652747:table/ai-assistant-usage-dev"
+}
+```
+
+The deploy workflow preserves the current ECS environment and adds the usage
+configuration automatically: `DAILY_TAROT_LIMIT=5`, `DAILY_CHAT_LIMIT=20`,
+`DYNAMODB_USAGE_TABLE_NAME=ai-assistant-usage-dev` and the configured sandbox
+email. The sandbox email is for development only and must be removed before
+production.
+
 The S3 document bucket must also allow this CloudFront origin for browser
 uploads using presigned URLs. S3 accepts `PUT`, `GET` and `HEAD` in
 `AllowedMethods`; `OPTIONS` must not be added to the S3 CORS method list.
@@ -511,15 +544,21 @@ Configured in `.env` and documented in `.env.example`:
 - `FRONTEND_ORIGIN=http://localhost:5173` (local) or
   `https://d38nzp4j8k9sdf.cloudfront.net,http://localhost:5173` (ECS)
 - `DYNAMODB_PROFILES_TABLE_NAME=ai-assistant-profiles-dev`
+- `DYNAMODB_TAROT_READINGS_TABLE_NAME=ai-assistant-tarot-readings-dev`
+- `DYNAMODB_USAGE_TABLE_NAME=ai-assistant-usage-dev`
 - `AWS_REGION=eu-west-1`
 - `S3_BUCKET_NAME=`
-- `AI_PROVIDER=simulated`
+- `AI_PROVIDER=simulated` locally, or `bedrock` in the deployed environment
 - `VECTOR_STORE_BACKEND=opensearch`
 - `OPENSEARCH_ENDPOINT=`
 - `OPENSEARCH_INDEX=ai-assistant-documents`
 - `OPENSEARCH_SERVICE=aoss`
 - `BEDROCK_MODEL_ID=eu.amazon.nova-lite-v1:0`
 - `BEDROCK_MAX_TOKENS=128`
+- `DAILY_TAROT_LIMIT=5`
+- `DAILY_CHAT_LIMIT=20`
+- `SANDBOX_USER_EMAILS=` (optional, development-only allowlist)
+- `SANDBOX_USER_IDS=` (optional, preferred stable Cognito `sub` allowlist)
 - `BEDROCK_TEMPERATURE=0.2`
 - `EMBEDDING_PROVIDER=simulated`
 - `BEDROCK_EMBEDDING_MODEL_ID=amazon.titan-embed-text-v2:0`

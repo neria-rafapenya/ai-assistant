@@ -21,6 +21,24 @@ type ChatResponse = {
   sources: string[];
 };
 
+type UsageResponse = {
+  period: string;
+  tarot_limit: number | null;
+  chat_limit: number | null;
+  sandbox: boolean;
+};
+
+function UsageNotice({ usage }: { usage: UsageResponse | null }) {
+  if (usage?.sandbox) {
+    return <p className="usage-notice">Modo sandbox activo: no se aplican límites diarios a esta cuenta.</p>;
+  }
+  return (
+    <p className="usage-notice">
+      Límites diarios: {usage?.tarot_limit ?? 5} lecturas de tarot y {usage?.chat_limit ?? 20} consultas al asistente.
+    </p>
+  );
+}
+
 type DocumentItem = {
   key: string;
   size: number;
@@ -221,6 +239,7 @@ function DevPage() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
+  const [usage, setUsage] = useState<UsageResponse | null>(null);
 
   const apiBaseUrl = useMemo(
     () => import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000",
@@ -230,6 +249,15 @@ function DevPage() {
   const authHeaders = () => ({
     Authorization: `Bearer ${auth.user?.access_token ?? ""}`,
   });
+
+  useEffect(() => {
+    void fetch(`${apiBaseUrl}/api/v1/usage`, {
+      headers: { Authorization: `Bearer ${auth.user?.access_token ?? ""}` },
+    })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: UsageResponse | null) => { if (data) setUsage(data); })
+      .catch(() => undefined);
+  }, [apiBaseUrl, auth.user?.access_token]);
 
   const formatSize = (size: number) =>
     `${new Intl.NumberFormat("es-ES").format(size)} bytes`;
@@ -303,7 +331,11 @@ function DevPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`Chat fallo con status ${response.status}`);
+        const data = await response.json().catch(() => null);
+        if (response.status === 429) {
+          setUsage({ period: "", tarot_limit: usage?.tarot_limit ?? 5, chat_limit: 0, sandbox: false });
+        }
+        throw new Error(data?.detail ?? `Chat fallo con status ${response.status}`);
       }
 
       const data: ChatResponse = await response.json();
@@ -460,6 +492,7 @@ function DevPage() {
       <header>
         <h1>AI Assistant</h1>
         <p>Frontend React conectado a FastAPI con fetch.</p>
+        <UsageNotice usage={usage} />
       </header>
 
       <section className="panel">
@@ -585,7 +618,7 @@ function DevPage() {
             placeholder="Escribe tu mensaje"
             rows={4}
           />
-          <button type="submit" className="action" disabled={isSending}>
+          <button type="submit" className="action" disabled={isSending || (usage !== null && !usage.sandbox && usage.chat_limit === 0)}>
             {isSending ? "Enviando..." : "Enviar a /api/v1/chat"}
           </button>
         </form>
@@ -737,6 +770,16 @@ function TarotPage() {
   const [reading, setReading] = useState<TarotReadingResponse | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [readingError, setReadingError] = useState("");
+  const [usage, setUsage] = useState<UsageResponse | null>(null);
+
+  useEffect(() => {
+    void fetch(`${apiBaseUrl}/api/v1/usage`, {
+      headers: { Authorization: `Bearer ${auth.user?.access_token ?? ""}` },
+    })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: UsageResponse | null) => { if (data) setUsage(data); })
+      .catch(() => undefined);
+  }, [apiBaseUrl, auth.user?.access_token]);
 
   const drawCards = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -766,7 +809,12 @@ function TarotPage() {
         }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail ?? `La lectura falló (${response.status})`);
+      if (!response.ok) {
+        if (response.status === 429) {
+          setUsage({ period: "", tarot_limit: 0, chat_limit: usage?.chat_limit ?? 20, sandbox: false });
+        }
+        throw new Error(data.detail ?? `La lectura falló (${response.status})`);
+      }
       setReading(data);
     } catch (err) {
       setReadingError(err instanceof Error ? err.message : "No se pudo generar la lectura");
@@ -780,6 +828,7 @@ function TarotPage() {
       <p className="eyebrow">Tarot</p>
       <h1>Una lectura para escucharte</h1>
       <p className="lead">Elige una pregunta y deja que las cartas te ofrezcan una perspectiva para reflexionar.</p>
+      <UsageNotice usage={usage} />
       {drawnCards.length === 0 ? (
         <section className="tarot-reading tarot-pending">
           <div className="tarot-reading-heading">
@@ -847,7 +896,7 @@ function TarotPage() {
             <option value="practico">Práctico</option>
           </select>
         </label>
-        <button type="submit" className="action tarot-submit">{drawnCards.length ? "Nueva lectura" : "Comenzar lectura"}</button>
+        <button type="submit" className="action tarot-submit" disabled={isReading || (usage !== null && !usage.sandbox && usage.tarot_limit === 0)}>{drawnCards.length ? "Nueva lectura" : "Comenzar lectura"}</button>
       </form>
     </section>
   );

@@ -92,6 +92,16 @@
   padding: 72px 0;
 }
 
+.usage-notice {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(117, 91, 58, 0.25);
+  border-radius: 0.75rem;
+  color: #6d5136;
+  background: rgba(246, 236, 217, 0.65);
+  font-size: 0.92rem;
+}
+
 .eyebrow {
   color: var(--accent);
   font-size: 0.85rem;

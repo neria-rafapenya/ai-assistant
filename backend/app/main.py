@@ -28,6 +28,12 @@ from app.tarot_repository import (
     SQLiteTarotReadingRepository,
     create_reading_record,
 )
+from app.usage_repository import (
+    DynamoDBUsageRepository,
+    SQLiteUsageRepository,
+    UsageLimitExceeded,
+    usage_snapshot,
+)
 from app.vector_store import create_vector_store
 
 
@@ -180,6 +186,13 @@ class TarotReadingsResponse(BaseModel):
     readings: list[TarotReadingItem]
 
 
+class UsageResponse(BaseModel):
+    period: str
+    tarot_limit: int | None
+    chat_limit: int | None
+    sandbox: bool
+
+
 app = FastAPI(
     title="AI Assistant Backend",
     version="0.1.0",
@@ -251,6 +264,14 @@ if settings.persistence_backend == "dynamodb":
     )
 else:
     tarot_reading_repository = SQLiteTarotReadingRepository(settings.chat_database_path)
+
+if settings.persistence_backend == "dynamodb":
+    usage_repository = DynamoDBUsageRepository(
+        settings.dynamodb_usage_table_name,
+        settings.aws_region,
+    )
+else:
+    usage_repository = SQLiteUsageRepository(settings.chat_database_path)
 
 s3_client = boto3.client(
     "s3",
@@ -374,6 +395,37 @@ def save_profile(
     return serialize_profile(current_user.sub, profile)
 
 
+def consume_usage(current_user: AuthenticatedUser, kind: str) -> None:
+    if current_user.is_sandbox_user:
+        return
+    limit = settings.daily_tarot_limit if kind == "tarot" else settings.daily_chat_limit
+    try:
+        usage_repository.consume(current_user.sub, kind, limit)
+    except UsageLimitExceeded as exc:
+        label = "lecturas de tarot" if kind == "tarot" else "consultas al asistente"
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Has alcanzado el límite diario de {limit} {label}. "
+                "Podrás volver a utilizarlo mañana."
+            ),
+            headers={"Retry-After": "86400"},
+        ) from exc
+
+
+@app.get("/api/v1/usage", response_model=UsageResponse, tags=["Usage"])
+def get_usage(
+    current_user: AuthenticatedUser = Depends(get_current_user),
+) -> UsageResponse:
+    snapshot = usage_snapshot(
+        current_user.sub,
+        current_user.is_sandbox_user,
+        settings.daily_tarot_limit,
+        settings.daily_chat_limit,
+    )
+    return UsageResponse(**snapshot)
+
+
 @app.post("/api/v1/tarot/read", response_model=TarotReadResponse, tags=["Tarot"])
 def tarot_read(
     payload: TarotReadRequest,
@@ -396,6 +448,7 @@ def tarot_read(
             detail=f"Unknown tarot card(s): {', '.join(unknown_cards)}",
         )
 
+    consume_usage(current_user, "tarot")
     profile = profile_repository.get(current_user.sub) or {}
     prompt = build_tarot_prompt(
         question=payload.question.strip(),
@@ -462,6 +515,7 @@ def chat(
     payload: ChatRequest,
     current_user: AuthenticatedUser = Depends(get_current_user),
 ) -> ChatResponse:
+    consume_usage(current_user, "chat")
     session_id = payload.session_id or str(uuid4())
     try:
         result = orchestrator.handle(payload.message, provider_name=payload.provider)

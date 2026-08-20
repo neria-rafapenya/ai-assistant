@@ -17,6 +17,24 @@ class AuthenticatedUser:
     sub: str
     claims: dict
 
+    @property
+    def is_sandbox_user(self) -> bool:
+        configured_emails = {
+            value.strip().lower()
+            for value in settings.sandbox_user_emails.split(",")
+            if value.strip()
+        }
+        configured_ids = {
+            value.strip()
+            for value in settings.sandbox_user_ids.split(",")
+            if value.strip()
+        }
+        claim_values = {
+            str(self.claims.get(key, "")).strip().lower()
+            for key in ("email", "username", "cognito:username")
+        }
+        return self.sub in configured_ids or bool(claim_values & configured_emails)
+
 
 @lru_cache(maxsize=1)
 def get_jwks_client() -> PyJWKClient:
